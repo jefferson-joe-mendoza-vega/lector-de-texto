@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lector de Texto - Párrafos</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg-dark: #111827;
+      --bg-darker: #1F2937;
+      --text-white: #ffffff;
+      --text-gray: #9CA3AF;
+      --blue-500: #3B82F6;
+      --blue-600: #2563EB;
+      --red-500: #EF4444;
+      --red-600: #DC2626;
+      --gray-600: #4B5563;
+      --gray-700: #374151;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-white);
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    /* HEADER */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .title {
+      font-size: 1.875rem;
+      font-weight: bold;
+      color: var(--blue-500);
+    }
+    .header-buttons {
+      display: flex;
+      gap: 1rem;
+    }
+    .icon-button {
+      padding: 0.5rem;
+      border-radius: 9999px;
+      background: none;
+      border: none;
+      color: var(--blue-500);
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .icon-button:hover {
+      background-color: var(--gray-700);
+    }
+
+    /* MENÚ LATERAL (IZQUIERDO) */
+    .side-menu {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 20rem;
+      background-color: var(--bg-darker);
+      box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+      transform: translateX(-100%);
+      transition: transform 0.3s ease-in-out;
+      z-index: 1000;
+    }
+    .side-menu.open {
+      transform: translateX(0);
+    }
+    .side-menu-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--gray-700);
+    }
+    .side-menu-content {
+      padding: 1.5rem;
+    }
+    .side-menu-content ul {
+      list-style: none;
+    }
+    .side-menu-content li {
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+      background-color: var(--gray-700);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .side-menu-content li:hover {
+      background-color: var(--gray-600);
+    }
+
+    /* ÁREA DE TEXTO Y CONTROLES */
+    .text-container {
+      background-color: var(--bg-darker);
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .text-control-bar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .text-display {
+      width: 100%;
+      min-height: 16rem;
+      max-height: 400px; /* Altura fija con scroll */
+      padding: 1rem;
+      background-color: var(--gray-700);
+      border: 2px solid var(--gray-600);
+      border-radius: 0.5rem;
+      color: var(--text-white);
+      overflow-y: auto;
+      margin-bottom: 1rem;
+    }
+    .text-display:focus-within {
+      border-color: var(--blue-500);
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.5);
+    }
+    .placeholder {
+      color: var(--text-gray);
+    }
+    .paragraph {
+      margin-bottom: 0.5rem;
+      white-space: pre-wrap;
+      display: block;
+    }
+    .highlighted {
+      background-color: var(--blue-500);
+      padding: 0.25rem;
+      border-radius: 0.25rem;
+      display: block;
+      margin-bottom: 0.5rem;
+      white-space: pre-wrap;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .control-button, .play-button, .save-button {
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      border: none;
+      background-color: var(--gray-700);
+      color: var(--text-white);
+      cursor: pointer;
+      transition: background-color 0.2s;
+      font-size: 1.125rem;
+      font-weight: 500;
+    }
+    .control-button:hover:not(:disabled),
+    .play-button:hover:not(.playing),
+    .save-button:hover {
+      background-color: var(--gray-600);
+    }
+    .control-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .play-button.playing {
+      background-color: var(--red-500);
+    }
+    .play-button.playing:hover {
+      background-color: var(--red-600);
+    }
+    .play-button:not(.playing) {
+      background-color: var(--blue-500);
+    }
+    .play-button:not(.playing):hover {
+      background-color: var(--blue-600);
+    }
+    .save-button {
+      background-color: var(--blue-600);
+      margin-top: 1rem;
+      width: 100%;
+    }
+
+    /* PANEL DE CONFIGURACIÓN (DERECHO) */
+    .settings-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100%;
+      width: 20rem;
+      background-color: var(--bg-darker);
+      box-shadow: -2px 0 8px rgba(0,0,0,0.2);
+      transform: translateX(100%);
+      transition: transform 0.3s ease-in-out;
+      z-index: 999;
+    }
+    .settings-panel.open {
+      transform: translateX(0);
+    }
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--gray-700);
+    }
+    .settings-content {
+      padding: 1.5rem;
+    }
+    .setting-group {
+      margin-bottom: 1.5rem;
+    }
+    .setting-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-gray);
+      margin-bottom: 0.5rem;
+    }
+    .voice-select {
+      width: 100%;
+      padding: 0.5rem;
+      background-color: var(--gray-700);
+      border: 1px solid var(--gray-600);
+      border-radius: 0.5rem;
+      color: var(--text-white);
+    }
+    .voice-select:focus {
+      border-color: var(--blue-500);
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.5);
+    }
+    .range-input {
+      width: 100%;
+      height: 0.5rem;
+      background-color: var(--gray-700);
+      border-radius: 0.25rem;
+      -webkit-appearance: none;
+    }
+    .range-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 1rem;
+      height: 1rem;
+      background-color: var(--blue-500);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    /* NOTIFICACIONES */
+    #notificationContainer {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 1100;
+    }
+    .notification {
+      background-color: var(--red-500);
+      color: var(--text-white);
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+      border-radius: 4px;
+      opacity: 0.9;
+      transition: opacity 0.5s ease-out;
+    }
+  </style>
+</head>
+<body>
+  <!-- MENÚ LATERAL (IZQUIERDO): Guarda los textos guardados -->
+  <div class="side-menu" id="sideMenu">
+    <div class="side-menu-header">
+      <h2 style="color: var(--blue-500)">Guardados</h2>
+      <button class="icon-button" id="closeMenu" title="Cerrar Menú">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="side-menu-content">
+      <ul id="savedTextsList">
+        <!-- Aquí se cargarán los textos guardados -->
+      </ul>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Encabezado -->
+    <header class="header">
+      <div class="header-left">
+        <button class="icon-button" id="menuButton" title="Menú">
+          <i data-lucide="menu"></i>
+        </button>
+        <h1 class="title">Lector de Texto</h1>
+      </div>
+      <div class="header-buttons">
+        <button class="icon-button" id="settingsButton" title="Configuración">
+          <i data-lucide="settings"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Área principal con el editor y controles -->
+    <main>
+      <div class="text-container">
+        <div class="text-control-bar">
+          <button class="icon-button" id="clearText" title="Limpiar texto">
+            <i data-lucide="rotate-ccw"></i>
+          </button>
+        </div>
+        <!-- Área editable con scroll; el contenido se guarda en el navegador -->
+        <div id="textDisplay" class="text-display" contenteditable="true">
+          <span class="placeholder">Escribe o pega tu texto aquí. Cada cambio de línea será un nuevo párrafo.</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="control-button" id="rewindButton" disabled title="Retroceder un párrafo">
+          <i data-lucide="arrow-left"></i>
+        </button>
+        <button class="play-button" id="playButton">
+          <i data-lucide="play"></i>
+          <span>Reproducir</span>
+        </button>
+        <button class="control-button" id="forwardButton" disabled title="Adelantar un párrafo">
+          <i data-lucide="arrow-right"></i>
+        </button>
+      </div>
+
+      <!-- Botón Guardar debajo de los controles -->
+      <div class="controls">
+        <button class="save-button" id="saveTextButton">Guardar</button>
+      </div>
+    </main>
+
+    <!-- PANEL DE CONFIGURACIÓN (DERECHO) -->
+    <div class="settings-panel" id="settingsPanel">
+      <div class="settings-header">
+        <h2 style="color: var(--blue-500)">Configuración</h2>
+        <button class="icon-button" id="closeSettings" title="Cerrar Configuración">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="settings-content">
+        <div class="setting-group">
+          <label class="setting-label">Voz</label>
+          <select id="voiceSelect" class="voice-select"></select>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">
+            Velocidad de lectura: <span id="rateDisplay">1x</span>
+          </label>
+          <input type="range" id="rateRange" class="range-input" min="0.5" max="2" step="0.1" value="1">
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">
+            Tono de voz: <span id="pitchDisplay">1</span>
+          </label>
+          <input type="range" id="pitchRange" class="range-input" min="0.5" max="2" step="0.1" value="1">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor para notificaciones -->
+  <div id="notificationContainer"></div>
+
+  <script>
+    // Inicializar iconos de Lucide
+    lucide.createIcons();
+
+    // Función para mostrar notificaciones de error (desaparecen automáticamente)
+    function showNotification(message) {
+      const container = document.getElementById('notificationContainer');
+      const notif = document.createElement('div');
+      notif.className = 'notification';
+      notif.innerText = message;
+      container.appendChild(notif);
+      setTimeout(() => {
+        notif.style.opacity = '0';
+        setTimeout(() => {
+          container.removeChild(notif);
+        }, 500);
+      }, 3000);
+    }
+
+    // Estado de la aplicación
+    const state = {
+      isReading: false,       // Indica si se está leyendo algún párrafo
+      isPaused: false,        // Si la lectura está pausada
+      currentParagraph: 0,    // Índice del párrafo actual
+      paragraphs: [],         // Párrafos extraídos del área de texto
+      speechRate: 1,          // Velocidad de lectura
+      speechPitch: 1,         // Tono de voz
+      selectedVoice: '',      // Voz seleccionada
+      availableVoices: [],    // Lista de voces disponibles
+      currentUtterance: null, // Instancia actual de SpeechSynthesisUtterance
+      savedTexts: []          // Array de textos guardados {title, content}
+    };
+
+    // Referencias a elementos del DOM
+    const elements = {
+      textDisplay: document.getElementById('textDisplay'),
+      playButton: document.getElementById('playButton'),
+      rewindButton: document.getElementById('rewindButton'),
+      forwardButton: document.getElementById('forwardButton'),
+      settingsPanel: document.getElementById('settingsPanel'),
+      voiceSelect: document.getElementById('voiceSelect'),
+      rateRange: document.getElementById('rateRange'),
+      pitchRange: document.getElementById('pitchRange'),
+      rateDisplay: document.getElementById('rateDisplay'),
+      pitchDisplay: document.getElementById('pitchDisplay'),
+      saveTextButton: document.getElementById('saveTextButton'),
+      savedTextsList: document.getElementById('savedTextsList')
+    };
+
+    /* --- CARGAR CONTENIDO Y CONFIGURACIONES GUARDADAS --- */
+    function loadFromLocalStorage() {
+      // Cargar contenido del área de texto
+      const savedText = localStorage.getItem('savedText') || '';
+      if (savedText) {
+        elements.textDisplay.innerHTML = savedText;
+      }
+      // Cargar configuración de voz
+      const savedVoice = localStorage.getItem('selectedVoice');
+      if (savedVoice) {
+        state.selectedVoice = savedVoice;
+      }
+      // Cargar velocidad
+      const savedRate = localStorage.getItem('speechRate');
+      if (savedRate) {
+        state.speechRate = parseFloat(savedRate);
+        elements.rateRange.value = savedRate;
+        elements.rateDisplay.textContent = `${savedRate}x`;
+      }
+      // Cargar tono
+      const savedPitch = localStorage.getItem('speechPitch');
+      if (savedPitch) {
+        state.speechPitch = parseFloat(savedPitch);
+        elements.pitchRange.value = savedPitch;
+        elements.pitchDisplay.textContent = savedPitch;
+      }
+      // Cargar textos guardados (array JSON)
+      const savedTexts = localStorage.getItem('savedTexts');
+      if (savedTexts) {
+        state.savedTexts = JSON.parse(savedTexts);
+      } else {
+        state.savedTexts = [];
+      }
+      renderSavedTexts();
+    }
+    function saveToLocalStorage() {
+      localStorage.setItem('savedText', elements.textDisplay.innerHTML);
+      localStorage.setItem('selectedVoice', state.selectedVoice);
+      localStorage.setItem('speechRate', state.speechRate);
+      localStorage.setItem('speechPitch', state.speechPitch);
+      localStorage.setItem('savedTexts', JSON.stringify(state.savedTexts));
+    }
+    loadFromLocalStorage();
+    /* --- FIN CARGA --- */
+
+    /* --- CARGAR VOCES --- */
+    function loadVoices() {
+      state.availableVoices = window.speechSynthesis.getVoices();
+      elements.voiceSelect.innerHTML = state.availableVoices
+        .map(voice => `<option value="${voice.name}">${voice.name}</option>`)
+        .join('');
+      if (state.availableVoices.length > 0) {
+        if (state.selectedVoice) {
+          const voiceExists = state.availableVoices.find(v => v.name === state.selectedVoice);
+          elements.voiceSelect.value = voiceExists ? state.selectedVoice : state.availableVoices[0].name;
+        } else {
+          state.selectedVoice = state.availableVoices[0].name;
+          elements.voiceSelect.value = state.selectedVoice;
+        }
+      }
+    }
+    speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices();
+
+    /* --- PROCESAMIENTO Y REPRODUCCIÓN DEL TEXTO --- */
+    function parseParagraphs() {
+      const fullText = elements.textDisplay.innerText.trim();
+      if (!fullText) {
+        state.paragraphs = [];
+        return;
+      }
+      state.paragraphs = fullText.split(/\n+/);
+    }
+    function renderParagraphs() {
+      const html = state.paragraphs.map((p, i) => {
+        if (i === state.currentParagraph && state.isReading && !state.isPaused) {
+          return `<p class="highlighted">${p}</p>`;
+        }
+        return `<p class="paragraph">${p}</p>`;
+      }).join('');
+      elements.textDisplay.innerHTML = html;
+      const highlightedElem = elements.textDisplay.querySelector('.highlighted');
+      if (highlightedElem) {
+        highlightedElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+    function startReadingFromCurrent() {
+      if (state.currentParagraph < 0 || state.currentParagraph >= state.paragraphs.length) return;
+      const text = state.paragraphs[state.currentParagraph];
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = state.speechRate;
+      utterance.pitch = state.speechPitch;
+      const voice = state.availableVoices.find(v => v.name === state.selectedVoice);
+      if (voice) {
+        utterance.voice = voice;
+      }
+      utterance.onend = () => {
+        if (!state.isPaused) {
+          state.currentParagraph++;
+          if (state.currentParagraph < state.paragraphs.length) {
+            renderParagraphs();
+            startReadingFromCurrent();
+          } else {
+            state.isReading = false;
+            updatePlayButton(false);
+            renderParagraphs();
+            disableSkipButtons(true);
+          }
+        }
+      };
+      state.currentUtterance = utterance;
+      try {
+        window.speechSynthesis.speak(utterance);
+      } catch (error) {
+        showNotification("Error al iniciar la reproducción.");
+      }
+      renderParagraphs();
+    }
+    
+    function togglePlay() {
+      // Si se muestra el placeholder, se elimina al iniciar
+      if (elements.textDisplay.querySelector('.placeholder')) {
+        elements.textDisplay.innerHTML = '';
+      }
+      if (!state.isReading && !window.speechSynthesis.speaking) {
+        parseParagraphs();
+        if (state.paragraphs.length === 0) {
+          showNotification("No hay texto para leer. Por favor, ingresa algún texto.");
+          return;
+        }
+        state.isReading = true;
+        state.isPaused = false;
+        disableSkipButtons(false);
+        updatePlayButton(true);
+        startReadingFromCurrent();
+        return;
+      }
+      togglePauseResume();
+      updatePlayButton(!state.isPaused);
+    }
+    
+    function togglePauseResume() {
+      if (!state.isReading) return;
+      if (state.isPaused) {
+        state.isPaused = false;
+        window.speechSynthesis.resume();
+        renderParagraphs();
+      } else {
+        state.isPaused = true;
+        window.speechSynthesis.pause();
+      }
+    }
+    
+    function skipParagraphs(offset) {
+      if (!state.paragraphs.length || !state.isReading) return;
+      window.speechSynthesis.cancel();
+      state.currentUtterance = null;
+      state.currentParagraph += offset;
+      if (state.currentParagraph < 0) {
+        state.currentParagraph = 0;
+      } else if (state.currentParagraph >= state.paragraphs.length) {
+        state.currentParagraph = state.paragraphs.length - 1;
+      }
+      if (!state.isPaused) {
+        startReadingFromCurrent();
+      } else {
+        renderParagraphs();
+      }
+    }
+    
+    function clearText() {
+      window.speechSynthesis.cancel();
+      state.isReading = false;
+      state.isPaused = false;
+      state.currentParagraph = 0;
+      state.currentUtterance = null;
+      elements.textDisplay.innerHTML =
+        '<span class="placeholder">Escribe o pega tu texto aquí. Cada cambio de línea será un nuevo párrafo.</span>';
+      disableSkipButtons(true);
+      updatePlayButton(false);
+      state.paragraphs = [];
+      localStorage.removeItem('savedText');
+    }
+    
+    function updatePlayButton(isPlaying) {
+      const icon = isPlaying ? 'pause' : 'play';
+      const text = isPlaying ? 'Pausar' : 'Reproducir';
+      elements.playButton.innerHTML = `
+        <i data-lucide="${icon}"></i>
+        <span>${text}</span>
+      `;
+      elements.playButton.classList.toggle('playing', isPlaying);
+      lucide.createIcons();
+    }
+    
+    function disableSkipButtons(disabled) {
+      elements.rewindButton.disabled = disabled;
+      elements.forwardButton.disabled = disabled;
+    }
+
+    /* --- GUARDAR TEXTOS EN LOCALSTORAGE Y MOSTRAR EN MENÚ LATERAL --- */
+    function renderSavedTexts() {
+      elements.savedTextsList.innerHTML = state.savedTexts.map((item, index) => {
+        return `<li data-index="${index}">${item.title}</li>`;
+      }).join('');
+      // Asignar evento a cada elemento guardado
+      elements.savedTextsList.querySelectorAll('li').forEach(li => {
+        li.addEventListener('click', () => {
+          loadSavedText(li.getAttribute('data-index'));
+        });
+      });
+    }
+    
+    function saveCurrentText() {
+      const content = elements.textDisplay.innerHTML.trim();
+      // Si el contenido está vacío o solo tiene el placeholder, no se guarda
+      if (!content || elements.textDisplay.querySelector('.placeholder')) {
+        alert('No hay texto para guardar.');
+        return;
+      }
+      // Generar un título tomando las primeras 5 palabras del primer párrafo
+      const textContent = elements.textDisplay.innerText.trim();
+      const words = textContent.split(/\s+/);
+      let title = words.slice(0, 5).join(' ');
+      if (title.length > 30) {
+        title = title.substring(0, 30) + '...';
+      }
+      const savedText = { title, content };
+      state.savedTexts.push(savedText);
+      saveToLocalStorage();
+      renderSavedTexts();
+      alert('Texto guardado correctamente.');
+    }
+    
+    function loadSavedText(index) {
+      const item = state.savedTexts[index];
+      if (item) {
+        // Cargar el contenido guardado en el área editable
+        elements.textDisplay.innerHTML = item.content;
+        saveToLocalStorage();
+        // Reiniciar el estado de lectura
+        state.isReading = false;
+        state.isPaused = false;
+        state.currentParagraph = 0;
+        state.paragraphs = [];
+        updatePlayButton(false);
+        parseParagraphs();
+        renderParagraphs();
+      }
+    }
+    
+    /* --- EVENTOS Y ASIGNACIONES --- */
+    elements.textDisplay.addEventListener('input', () => {
+      if (!elements.textDisplay.querySelector('.placeholder')) {
+        saveToLocalStorage();
+      }
+    });
+    elements.textDisplay.onblur = () => {
+      if (!elements.textDisplay.textContent.trim()) {
+        elements.textDisplay.innerHTML =
+          '<span class="placeholder">Escribe o pega tu texto aquí. Cada cambio de línea será un nuevo párrafo.</span>';
+      }
+      saveToLocalStorage();
+    };
+    elements.voiceSelect.onchange = (e) => {
+      state.selectedVoice = e.target.value;
+      saveToLocalStorage();
+    };
+    elements.rateRange.oninput = (e) => {
+      state.speechRate = parseFloat(e.target.value);
+      elements.rateDisplay.textContent = `${state.speechRate}x`;
+      saveToLocalStorage();
+    };
+    elements.pitchRange.oninput = (e) => {
+      state.speechPitch = parseFloat(e.target.value);
+      elements.pitchDisplay.textContent = state.speechPitch;
+      saveToLocalStorage();
+    };
+    document.getElementById('settingsButton').onclick = () => {
+      elements.settingsPanel.classList.add('open');
+    };
+    document.getElementById('closeSettings').onclick = () => {
+      elements.settingsPanel.classList.remove('open');
+    };
+    document.getElementById('menuButton').onclick = () => {
+      document.getElementById('sideMenu').classList.add('open');
+      renderSavedTexts();
+    };
+    document.getElementById('closeMenu').onclick = () => {
+      document.getElementById('sideMenu').classList.remove('open');
+    };
+    document.getElementById('clearText').onclick = clearText;
+    elements.playButton.onclick = togglePlay;
+    elements.rewindButton.onclick = () => skipParagraphs(-1);
+    elements.forwardButton.onclick = () => skipParagraphs(1);
+    elements.saveTextButton.onclick = saveCurrentText;
+    elements.textDisplay.onfocus = () => {
+      const hasPlaceholder = elements.textDisplay.querySelector('.placeholder');
+      if (hasPlaceholder) {
+        elements.textDisplay.innerHTML = '';
+      }
+    };
+
+    // Inicialización al cargar la página
+    (function init() {
+      loadFromLocalStorage();
+      loadVoices();
+    })();
+  </script>
+</body>
+</html>
