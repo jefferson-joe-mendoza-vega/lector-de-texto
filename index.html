@@ -282,6 +282,29 @@
       opacity: 0.9;
       transition: opacity 0.5s ease-out;
     }
+
+    /* MEDIA QUERIES PARA RESPONSIVIDAD */
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+      .side-menu,
+      .settings-panel {
+        width: 16rem;
+      }
+      .text-display {
+        font-size: 0.9rem;
+      }
+      .control-button, .play-button, .save-button {
+        padding: 0.5rem;
+        font-size: 1rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -402,16 +425,16 @@
 
     // Estado de la aplicación
     const state = {
-      isReading: false,       // Indica si se está leyendo algún párrafo
-      isPaused: false,        // Si la lectura está pausada
-      currentParagraph: 0,    // Índice del párrafo actual
-      paragraphs: [],         // Párrafos extraídos del área de texto
-      speechRate: 1,          // Velocidad de lectura
-      speechPitch: 1,         // Tono de voz
-      selectedVoice: '',      // Voz seleccionada
-      availableVoices: [],    // Lista de voces disponibles
-      currentUtterance: null, // Instancia actual de SpeechSynthesisUtterance
-      savedTexts: []          // Array de textos guardados {title, content}
+      isReading: false,
+      isPaused: false,
+      currentParagraph: 0,
+      paragraphs: [],
+      speechRate: 1,
+      speechPitch: 1,
+      selectedVoice: '',
+      availableVoices: [],
+      currentUtterance: null,
+      savedTexts: []
     };
 
     // Referencias a elementos del DOM
@@ -432,37 +455,28 @@
 
     /* --- CARGAR CONTENIDO Y CONFIGURACIONES GUARDADAS --- */
     function loadFromLocalStorage() {
-      // Cargar contenido del área de texto
       const savedText = localStorage.getItem('savedText') || '';
       if (savedText) {
         elements.textDisplay.innerHTML = savedText;
       }
-      // Cargar configuración de voz
       const savedVoice = localStorage.getItem('selectedVoice');
       if (savedVoice) {
         state.selectedVoice = savedVoice;
       }
-      // Cargar velocidad
       const savedRate = localStorage.getItem('speechRate');
       if (savedRate) {
         state.speechRate = parseFloat(savedRate);
         elements.rateRange.value = savedRate;
-        elements.rateDisplay.textContent = `${savedRate}x`;
+        elements.rateDisplay.textContent = savedRate + "x";
       }
-      // Cargar tono
       const savedPitch = localStorage.getItem('speechPitch');
       if (savedPitch) {
         state.speechPitch = parseFloat(savedPitch);
         elements.pitchRange.value = savedPitch;
         elements.pitchDisplay.textContent = savedPitch;
       }
-      // Cargar textos guardados (array JSON)
       const savedTexts = localStorage.getItem('savedTexts');
-      if (savedTexts) {
-        state.savedTexts = JSON.parse(savedTexts);
-      } else {
-        state.savedTexts = [];
-      }
+      state.savedTexts = savedTexts ? JSON.parse(savedTexts) : [];
       renderSavedTexts();
     }
     function saveToLocalStorage() {
@@ -473,7 +487,6 @@
       localStorage.setItem('savedTexts', JSON.stringify(state.savedTexts));
     }
     loadFromLocalStorage();
-    /* --- FIN CARGA --- */
 
     /* --- CARGAR VOCES --- */
     function loadVoices() {
@@ -497,11 +510,7 @@
     /* --- PROCESAMIENTO Y REPRODUCCIÓN DEL TEXTO --- */
     function parseParagraphs() {
       const fullText = elements.textDisplay.innerText.trim();
-      if (!fullText) {
-        state.paragraphs = [];
-        return;
-      }
-      state.paragraphs = fullText.split(/\n+/);
+      state.paragraphs = fullText ? fullText.split(/\n+/) : [];
     }
     function renderParagraphs() {
       const html = state.paragraphs.map((p, i) => {
@@ -550,7 +559,6 @@
     }
     
     function togglePlay() {
-      // Si se muestra el placeholder, se elimina al iniciar
       if (elements.textDisplay.querySelector('.placeholder')) {
         elements.textDisplay.innerHTML = '';
       }
@@ -617,10 +625,8 @@
     function updatePlayButton(isPlaying) {
       const icon = isPlaying ? 'pause' : 'play';
       const text = isPlaying ? 'Pausar' : 'Reproducir';
-      elements.playButton.innerHTML = `
-        <i data-lucide="${icon}"></i>
-        <span>${text}</span>
-      `;
+      elements.playButton.innerHTML = `<i data-lucide="${icon}"></i>
+        <span>${text}</span>`;
       elements.playButton.classList.toggle('playing', isPlaying);
       lucide.createIcons();
     }
@@ -635,7 +641,6 @@
       elements.savedTextsList.innerHTML = state.savedTexts.map((item, index) => {
         return `<li data-index="${index}">${item.title}</li>`;
       }).join('');
-      // Asignar evento a cada elemento guardado
       elements.savedTextsList.querySelectorAll('li').forEach(li => {
         li.addEventListener('click', () => {
           loadSavedText(li.getAttribute('data-index'));
@@ -645,12 +650,10 @@
     
     function saveCurrentText() {
       const content = elements.textDisplay.innerHTML.trim();
-      // Si el contenido está vacío o solo tiene el placeholder, no se guarda
       if (!content || elements.textDisplay.querySelector('.placeholder')) {
         alert('No hay texto para guardar.');
         return;
       }
-      // Generar un título tomando las primeras 5 palabras del primer párrafo
       const textContent = elements.textDisplay.innerText.trim();
       const words = textContent.split(/\s+/);
       let title = words.slice(0, 5).join(' ');
@@ -667,10 +670,8 @@
     function loadSavedText(index) {
       const item = state.savedTexts[index];
       if (item) {
-        // Cargar el contenido guardado en el área editable
         elements.textDisplay.innerHTML = item.content;
         saveToLocalStorage();
-        // Reiniciar el estado de lectura
         state.isReading = false;
         state.isPaused = false;
         state.currentParagraph = 0;
@@ -700,7 +701,7 @@
     };
     elements.rateRange.oninput = (e) => {
       state.speechRate = parseFloat(e.target.value);
-      elements.rateDisplay.textContent = `${state.speechRate}x`;
+      elements.rateDisplay.textContent = state.speechRate + "x";
       saveToLocalStorage();
     };
     elements.pitchRange.oninput = (e) => {
@@ -727,11 +728,19 @@
     elements.forwardButton.onclick = () => skipParagraphs(1);
     elements.saveTextButton.onclick = saveCurrentText;
     elements.textDisplay.onfocus = () => {
-      const hasPlaceholder = elements.textDisplay.querySelector('.placeholder');
-      if (hasPlaceholder) {
+      if (elements.textDisplay.querySelector('.placeholder')) {
         elements.textDisplay.innerHTML = '';
       }
     };
+
+    /* --- DETECCIÓN DE VISIBILIDAD DE LA PÁGINA --- */
+    // Este fragmento muestra un mensaje si la pestaña pierde el foco, ya que en muchos móviles
+    // la reproducción en segundo plano puede verse afectada.
+    document.addEventListener("visibilitychange", function() {
+      if (document.hidden && state.isReading) {
+        showNotification("La reproducción puede detenerse en segundo plano en algunos dispositivos móviles.");
+      }
+    });
 
     // Inicialización al cargar la página
     (function init() {
