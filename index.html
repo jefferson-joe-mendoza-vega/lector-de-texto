@@ -307,8 +307,7 @@
     }
   </style>
 </head>
-<body>
-  <!-- MENÚ LATERAL (IZQUIERDO): Guarda los textos guardados -->
+<!-- MENÚ LATERAL (IZQUIERDO): Guarda los textos guardados -->
   <div class="side-menu" id="sideMenu">
     <div class="side-menu-header">
       <h2 style="color: var(--blue-500)">Guardados</h2>
@@ -404,349 +403,359 @@
   <!-- Contenedor para notificaciones -->
   <div id="notificationContainer"></div>
 
-  <script>
-    // Inicializar iconos de Lucide
-    lucide.createIcons();
+ 
+    <script>
+  // Inicializar iconos de Lucide
+  lucide.createIcons();
 
-    // Función para mostrar notificaciones de error (desaparecen automáticamente)
-    function showNotification(message) {
-      const container = document.getElementById('notificationContainer');
-      const notif = document.createElement('div');
-      notif.className = 'notification';
-      notif.innerText = message;
-      container.appendChild(notif);
+  // Función para mostrar notificaciones de error (desaparecen automáticamente)
+  function showNotification(message) {
+    const container = document.getElementById('notificationContainer');
+    const notif = document.createElement('div');
+    notif.className = 'notification';
+    notif.innerText = message;
+    container.appendChild(notif);
+    setTimeout(() => {
+      notif.style.opacity = '0';
       setTimeout(() => {
-        notif.style.opacity = '0';
-        setTimeout(() => {
-          container.removeChild(notif);
-        }, 500);
-      }, 3000);
+        container.removeChild(notif);
+      }, 500);
+    }, 3000);
+  }
+
+  // Estado de la aplicación
+  const state = {
+    isReading: false,       // Indica si se está reproduciendo texto
+    isPaused: false,        // Estado de pausa de la reproducción
+    currentParagraph: 0,    // Índice del párrafo actual
+    paragraphs: [],         // Contenedor de párrafos extraídos del texto
+    speechRate: 1,          // Velocidad de lectura
+    speechPitch: 1,         // Tono de voz
+    selectedVoice: '',      // Voz seleccionada
+    availableVoices: [],    // Lista de voces disponibles
+    currentUtterance: null, // Instancia actual del SpeechSynthesisUtterance
+    savedTexts: []          // Textos guardados en localStorage
+  };
+
+  // Referencias a elementos del DOM
+  const elements = {
+    textDisplay: document.getElementById('textDisplay'),
+    playButton: document.getElementById('playButton'),
+    rewindButton: document.getElementById('rewindButton'),
+    forwardButton: document.getElementById('forwardButton'),
+    settingsPanel: document.getElementById('settingsPanel'),
+    voiceSelect: document.getElementById('voiceSelect'),
+    rateRange: document.getElementById('rateRange'),
+    pitchRange: document.getElementById('pitchRange'),
+    rateDisplay: document.getElementById('rateDisplay'),
+    pitchDisplay: document.getElementById('pitchDisplay'),
+    saveTextButton: document.getElementById('saveTextButton'),
+    savedTextsList: document.getElementById('savedTextsList')
+  };
+
+  /* CARGAR CONTENIDO Y CONFIGURACIONES GUARDADAS */
+  function loadFromLocalStorage() {
+    const savedText = localStorage.getItem('savedText') || '';
+    if (savedText) {
+      elements.textDisplay.innerHTML = savedText;
     }
-
-    // Estado de la aplicación
-    const state = {
-      isReading: false,
-      isPaused: false,
-      currentParagraph: 0,
-      paragraphs: [],
-      speechRate: 1,
-      speechPitch: 1,
-      selectedVoice: '',
-      availableVoices: [],
-      currentUtterance: null,
-      savedTexts: []
-    };
-
-    // Referencias a elementos del DOM
-    const elements = {
-      textDisplay: document.getElementById('textDisplay'),
-      playButton: document.getElementById('playButton'),
-      rewindButton: document.getElementById('rewindButton'),
-      forwardButton: document.getElementById('forwardButton'),
-      settingsPanel: document.getElementById('settingsPanel'),
-      voiceSelect: document.getElementById('voiceSelect'),
-      rateRange: document.getElementById('rateRange'),
-      pitchRange: document.getElementById('pitchRange'),
-      rateDisplay: document.getElementById('rateDisplay'),
-      pitchDisplay: document.getElementById('pitchDisplay'),
-      saveTextButton: document.getElementById('saveTextButton'),
-      savedTextsList: document.getElementById('savedTextsList')
-    };
-
-    /* --- CARGAR CONTENIDO Y CONFIGURACIONES GUARDADAS --- */
-    function loadFromLocalStorage() {
-      const savedText = localStorage.getItem('savedText') || '';
-      if (savedText) {
-        elements.textDisplay.innerHTML = savedText;
-      }
-      const savedVoice = localStorage.getItem('selectedVoice');
-      if (savedVoice) {
-        state.selectedVoice = savedVoice;
-      }
-      const savedRate = localStorage.getItem('speechRate');
-      if (savedRate) {
-        state.speechRate = parseFloat(savedRate);
-        elements.rateRange.value = savedRate;
-        elements.rateDisplay.textContent = savedRate + "x";
-      }
-      const savedPitch = localStorage.getItem('speechPitch');
-      if (savedPitch) {
-        state.speechPitch = parseFloat(savedPitch);
-        elements.pitchRange.value = savedPitch;
-        elements.pitchDisplay.textContent = savedPitch;
-      }
-      const savedTexts = localStorage.getItem('savedTexts');
-      state.savedTexts = savedTexts ? JSON.parse(savedTexts) : [];
-      renderSavedTexts();
+    const savedVoice = localStorage.getItem('selectedVoice');
+    if (savedVoice) {
+      state.selectedVoice = savedVoice;
     }
-    function saveToLocalStorage() {
-      localStorage.setItem('savedText', elements.textDisplay.innerHTML);
-      localStorage.setItem('selectedVoice', state.selectedVoice);
-      localStorage.setItem('speechRate', state.speechRate);
-      localStorage.setItem('speechPitch', state.speechPitch);
-      localStorage.setItem('savedTexts', JSON.stringify(state.savedTexts));
+    const savedRate = localStorage.getItem('speechRate');
+    if (savedRate) {
+      state.speechRate = parseFloat(savedRate);
+      elements.rateRange.value = savedRate;
+      elements.rateDisplay.textContent = savedRate + "x";
     }
-    loadFromLocalStorage();
+    const savedPitch = localStorage.getItem('speechPitch');
+    if (savedPitch) {
+      state.speechPitch = parseFloat(savedPitch);
+      elements.pitchRange.value = savedPitch;
+      elements.pitchDisplay.textContent = savedPitch;
+    }
+    const savedTexts = localStorage.getItem('savedTexts');
+    state.savedTexts = savedTexts ? JSON.parse(savedTexts) : [];
+    renderSavedTexts();
+  }
 
-    /* --- CARGAR VOCES --- */
-    function loadVoices() {
-      state.availableVoices = window.speechSynthesis.getVoices();
-      elements.voiceSelect.innerHTML = state.availableVoices
-        .map(voice => `<option value="${voice.name}">${voice.name}</option>`)
-        .join('');
-      if (state.availableVoices.length > 0) {
-        if (state.selectedVoice) {
-          const voiceExists = state.availableVoices.find(v => v.name === state.selectedVoice);
-          elements.voiceSelect.value = voiceExists ? state.selectedVoice : state.availableVoices[0].name;
+  function saveToLocalStorage() {
+    localStorage.setItem('savedText', elements.textDisplay.innerHTML);
+    localStorage.setItem('selectedVoice', state.selectedVoice);
+    localStorage.setItem('speechRate', state.speechRate);
+    localStorage.setItem('speechPitch', state.speechPitch);
+    localStorage.setItem('savedTexts', JSON.stringify(state.savedTexts));
+  }
+
+  loadFromLocalStorage();
+
+  /* CARGAR VOCES */
+  function loadVoices() {
+    state.availableVoices = window.speechSynthesis.getVoices();
+    elements.voiceSelect.innerHTML = state.availableVoices
+      .map(voice => `<option value="${voice.name}">${voice.name}</option>`)
+      .join('');
+    if (state.availableVoices.length > 0) {
+      if (state.selectedVoice) {
+        const voiceExists = state.availableVoices.find(v => v.name === state.selectedVoice);
+        elements.voiceSelect.value = voiceExists ? state.selectedVoice : state.availableVoices[0].name;
+      } else {
+        state.selectedVoice = state.availableVoices[0].name;
+        elements.voiceSelect.value = state.selectedVoice;
+      }
+    }
+  }
+
+  speechSynthesis.onvoiceschanged = loadVoices;
+  loadVoices();
+
+  /* PROCESAMIENTO Y REPRODUCCIÓN DEL TEXTO */
+  function parseParagraphs() {
+    const fullText = elements.textDisplay.innerText.trim();
+    if (!fullText) {
+      state.paragraphs = [];
+      return;
+    }
+    state.paragraphs = fullText.split(/\n+/);
+  }
+
+  function renderParagraphs() {
+    const html = state.paragraphs.map((p, i) => {
+      if (i === state.currentParagraph && state.isReading && !state.isPaused) {
+        return `<p class="highlighted">${p}</p>`;
+      }
+      return `<p class="paragraph">${p}</p>`;
+    }).join('');
+    elements.textDisplay.innerHTML = html;
+    const highlightedElem = elements.textDisplay.querySelector('.highlighted');
+    if (highlightedElem) {
+      highlightedElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function startReadingFromCurrent() {
+    if (state.currentParagraph < 0 || state.currentParagraph >= state.paragraphs.length) return;
+    const text = state.paragraphs[state.currentParagraph];
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = state.speechRate;
+    utterance.pitch = state.speechPitch;
+    const voice = state.availableVoices.find(v => v.name === state.selectedVoice);
+    if (voice) {
+      utterance.voice = voice;
+    }
+    utterance.onend = () => {
+      if (!state.isPaused) {
+        state.currentParagraph++;
+        if (state.currentParagraph < state.paragraphs.length) {
+          renderParagraphs();
+          startReadingFromCurrent();
         } else {
-          state.selectedVoice = state.availableVoices[0].name;
-          elements.voiceSelect.value = state.selectedVoice;
+          state.isReading = false;
+          updatePlayButton(false);
+          renderParagraphs();
+          disableSkipButtons(true);
         }
       }
+    };
+    state.currentUtterance = utterance;
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      showNotification("Error al iniciar la reproducción.");
     }
-    speechSynthesis.onvoiceschanged = loadVoices;
-    loadVoices();
+    renderParagraphs();
+  }
 
-    /* --- PROCESAMIENTO Y REPRODUCCIÓN DEL TEXTO --- */
-    function parseParagraphs() {
-      const fullText = elements.textDisplay.innerText.trim();
-      state.paragraphs = fullText ? fullText.split(/\n+/) : [];
+  function togglePlay() {
+    if (elements.textDisplay.querySelector('.placeholder')) {
+      elements.textDisplay.innerHTML = '';
     }
-    function renderParagraphs() {
-      const html = state.paragraphs.map((p, i) => {
-        if (i === state.currentParagraph && state.isReading && !state.isPaused) {
-          return `<p class="highlighted">${p}</p>`;
-        }
-        return `<p class="paragraph">${p}</p>`;
-      }).join('');
-      elements.textDisplay.innerHTML = html;
-      const highlightedElem = elements.textDisplay.querySelector('.highlighted');
-      if (highlightedElem) {
-        highlightedElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-    function startReadingFromCurrent() {
-      if (state.currentParagraph < 0 || state.currentParagraph >= state.paragraphs.length) return;
-      const text = state.paragraphs[state.currentParagraph];
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = state.speechRate;
-      utterance.pitch = state.speechPitch;
-      const voice = state.availableVoices.find(v => v.name === state.selectedVoice);
-      if (voice) {
-        utterance.voice = voice;
-      }
-      utterance.onend = () => {
-        if (!state.isPaused) {
-          state.currentParagraph++;
-          if (state.currentParagraph < state.paragraphs.length) {
-            renderParagraphs();
-            startReadingFromCurrent();
-          } else {
-            state.isReading = false;
-            updatePlayButton(false);
-            renderParagraphs();
-            disableSkipButtons(true);
-          }
-        }
-      };
-      state.currentUtterance = utterance;
-      try {
-        window.speechSynthesis.speak(utterance);
-      } catch (error) {
-        showNotification("Error al iniciar la reproducción.");
-      }
-      renderParagraphs();
-    }
-    
-    function togglePlay() {
-      if (elements.textDisplay.querySelector('.placeholder')) {
-        elements.textDisplay.innerHTML = '';
-      }
-      if (!state.isReading && !window.speechSynthesis.speaking) {
-        parseParagraphs();
-        if (state.paragraphs.length === 0) {
-          showNotification("No hay texto para leer. Por favor, ingresa algún texto.");
-          return;
-        }
-        state.isReading = true;
-        state.isPaused = false;
-        disableSkipButtons(false);
-        updatePlayButton(true);
-        startReadingFromCurrent();
+    if (!state.isReading && !window.speechSynthesis.speaking) {
+      parseParagraphs();
+      if (state.paragraphs.length === 0) {
+        showNotification("No hay texto para leer. Por favor, ingresa algún texto.");
         return;
       }
-      togglePauseResume();
-      updatePlayButton(!state.isPaused);
+      state.isReading = true;
+      state.isPaused = false;
+      disableSkipButtons(false);
+      updatePlayButton(true);
+      startReadingFromCurrent();
+      return;
     }
-    
-    function togglePauseResume() {
-      if (!state.isReading) return;
-      if (state.isPaused) {
-        state.isPaused = false;
-        window.speechSynthesis.resume();
-        renderParagraphs();
-      } else {
-        state.isPaused = true;
-        window.speechSynthesis.pause();
-      }
+    togglePauseResume();
+    updatePlayButton(!state.isPaused);
+  }
+
+  function togglePauseResume() {
+    if (!state.isReading) return;
+    if (state.isPaused) {
+      state.isPaused = false;
+      window.speechSynthesis.resume();
+      renderParagraphs();
+    } else {
+      state.isPaused = true;
+      window.speechSynthesis.pause();
     }
-    
-    function skipParagraphs(offset) {
-      if (!state.paragraphs.length || !state.isReading) return;
-      window.speechSynthesis.cancel();
-      state.currentUtterance = null;
-      state.currentParagraph += offset;
-      if (state.currentParagraph < 0) {
-        state.currentParagraph = 0;
-      } else if (state.currentParagraph >= state.paragraphs.length) {
-        state.currentParagraph = state.paragraphs.length - 1;
-      }
-      if (!state.isPaused) {
-        startReadingFromCurrent();
-      } else {
-        renderParagraphs();
-      }
+  }
+
+  function skipParagraphs(offset) {
+    if (!state.paragraphs.length || !state.isReading) return;
+    window.speechSynthesis.cancel();
+    state.currentUtterance = null;
+    state.currentParagraph += offset;
+    if (state.currentParagraph < 0) {
+      state.currentParagraph = 0;
+    } else if (state.currentParagraph >= state.paragraphs.length) {
+      state.currentParagraph = state.paragraphs.length - 1;
     }
-    
-    function clearText() {
-      window.speechSynthesis.cancel();
+    if (!state.isPaused) {
+      startReadingFromCurrent();
+    } else {
+      renderParagraphs();
+    }
+  }
+
+  function clearText() {
+    window.speechSynthesis.cancel();
+    state.isReading = false;
+    state.isPaused = false;
+    state.currentParagraph = 0;
+    state.currentUtterance = null;
+    elements.textDisplay.innerHTML =
+      '<span class="placeholder">Escribe o pega tu texto aquí. Cada cambio de línea será un nuevo párrafo.</span>';
+    disableSkipButtons(true);
+    updatePlayButton(false);
+    state.paragraphs = [];
+    localStorage.removeItem('savedText');
+  }
+
+  function updatePlayButton(isPlaying) {
+    const icon = isPlaying ? 'pause' : 'play';
+    const text = isPlaying ? 'Pausar' : 'Reproducir';
+    elements.playButton.innerHTML = `<i data-lucide="${icon}"></i>
+      <span>${text}</span>`;
+    elements.playButton.classList.toggle('playing', isPlaying);
+    lucide.createIcons();
+  }
+
+  function disableSkipButtons(disabled) {
+    elements.rewindButton.disabled = disabled;
+    elements.forwardButton.disabled = disabled;
+  }
+
+  /* GUARDAR TEXTOS EN LOCALSTORAGE Y MOSTRAR EN MENÚ LATERAL */
+  function renderSavedTexts() {
+    elements.savedTextsList.innerHTML = state.savedTexts.map((item, index) => {
+      return `<li data-index="${index}">${item.title}</li>`;
+    }).join('');
+    elements.savedTextsList.querySelectorAll('li').forEach(li => {
+      li.addEventListener('click', () => {
+        loadSavedText(li.getAttribute('data-index'));
+      });
+    });
+  }
+
+  function saveCurrentText() {
+    const content = elements.textDisplay.innerHTML.trim();
+    if (!content || elements.textDisplay.querySelector('.placeholder')) {
+      alert('No hay texto para guardar.');
+      return;
+    }
+    const textContent = elements.textDisplay.innerText.trim();
+    const words = textContent.split(/\s+/);
+    let title = words.slice(0, 5).join(' ');
+    if (title.length > 30) {
+      title = title.substring(0, 30) + '...';
+    }
+    const savedText = { title, content };
+    state.savedTexts.push(savedText);
+    saveToLocalStorage();
+    renderSavedTexts();
+    alert('Texto guardado correctamente.');
+  }
+
+  function loadSavedText(index) {
+    const item = state.savedTexts[index];
+    if (item) {
+      elements.textDisplay.innerHTML = item.content;
+      saveToLocalStorage();
       state.isReading = false;
       state.isPaused = false;
       state.currentParagraph = 0;
-      state.currentUtterance = null;
+      state.paragraphs = [];
+      updatePlayButton(false);
+      parseParagraphs();
+      renderParagraphs();
+    }
+  }
+
+  /* EVENTOS Y ASIGNACIONES */
+  elements.textDisplay.addEventListener('input', () => {
+    if (!elements.textDisplay.querySelector('.placeholder')) {
+      saveToLocalStorage();
+    }
+  });
+  elements.textDisplay.onblur = () => {
+    if (!elements.textDisplay.textContent.trim()) {
       elements.textDisplay.innerHTML =
         '<span class="placeholder">Escribe o pega tu texto aquí. Cada cambio de línea será un nuevo párrafo.</span>';
-      disableSkipButtons(true);
-      updatePlayButton(false);
-      state.paragraphs = [];
-      localStorage.removeItem('savedText');
     }
-    
-    function updatePlayButton(isPlaying) {
-      const icon = isPlaying ? 'pause' : 'play';
-      const text = isPlaying ? 'Pausar' : 'Reproducir';
-      elements.playButton.innerHTML = `<i data-lucide="${icon}"></i>
-        <span>${text}</span>`;
-      elements.playButton.classList.toggle('playing', isPlaying);
-      lucide.createIcons();
+    saveToLocalStorage();
+  };
+  elements.voiceSelect.onchange = (e) => {
+    state.selectedVoice = e.target.value;
+    saveToLocalStorage();
+  };
+  elements.rateRange.oninput = (e) => {
+    state.speechRate = parseFloat(e.target.value);
+    elements.rateDisplay.textContent = state.speechRate + "x";
+    saveToLocalStorage();
+  };
+  elements.pitchRange.oninput = (e) => {
+    state.speechPitch = parseFloat(e.target.value);
+    elements.pitchDisplay.textContent = state.speechPitch;
+    saveToLocalStorage();
+  };
+  document.getElementById('settingsButton').onclick = () => {
+    elements.settingsPanel.classList.add('open');
+  };
+  document.getElementById('closeSettings').onclick = () => {
+    elements.settingsPanel.classList.remove('open');
+  };
+  document.getElementById('menuButton').onclick = () => {
+    document.getElementById('sideMenu').classList.add('open');
+    renderSavedTexts();
+  };
+  document.getElementById('closeMenu').onclick = () => {
+    document.getElementById('sideMenu').classList.remove('open');
+  };
+  document.getElementById('clearText').onclick = clearText;
+  elements.playButton.onclick = togglePlay;
+  elements.rewindButton.onclick = () => skipParagraphs(-1);
+  elements.forwardButton.onclick = () => skipParagraphs(1);
+  elements.saveTextButton.onclick = saveCurrentText;
+  elements.textDisplay.onfocus = () => {
+    const hasPlaceholder = elements.textDisplay.querySelector('.placeholder');
+    if (hasPlaceholder) {
+      elements.textDisplay.innerHTML = '';
     }
-    
-    function disableSkipButtons(disabled) {
-      elements.rewindButton.disabled = disabled;
-      elements.forwardButton.disabled = disabled;
-    }
+  };
 
-    /* --- GUARDAR TEXTOS EN LOCALSTORAGE Y MOSTRAR EN MENÚ LATERAL --- */
-    function renderSavedTexts() {
-      elements.savedTextsList.innerHTML = state.savedTexts.map((item, index) => {
-        return `<li data-index="${index}">${item.title}</li>`;
-      }).join('');
-      elements.savedTextsList.querySelectorAll('li').forEach(li => {
-        li.addEventListener('click', () => {
-          loadSavedText(li.getAttribute('data-index'));
-        });
-      });
+  // ** Detectar si la página pierde visibilidad (minimizada o cambia de pestaña) **
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden && state.isReading) {
+      showNotification('La lectura sigue en segundo plano...');
     }
-    
-    function saveCurrentText() {
-      const content = elements.textDisplay.innerHTML.trim();
-      if (!content || elements.textDisplay.querySelector('.placeholder')) {
-        alert('No hay texto para guardar.');
-        return;
-      }
-      const textContent = elements.textDisplay.innerText.trim();
-      const words = textContent.split(/\s+/);
-      let title = words.slice(0, 5).join(' ');
-      if (title.length > 30) {
-        title = title.substring(0, 30) + '...';
-      }
-      const savedText = { title, content };
-      state.savedTexts.push(savedText);
-      saveToLocalStorage();
-      renderSavedTexts();
-      alert('Texto guardado correctamente.');
-    }
-    
-    function loadSavedText(index) {
-      const item = state.savedTexts[index];
-      if (item) {
-        elements.textDisplay.innerHTML = item.content;
-        saveToLocalStorage();
-        state.isReading = false;
-        state.isPaused = false;
-        state.currentParagraph = 0;
-        state.paragraphs = [];
-        updatePlayButton(false);
-        parseParagraphs();
-        renderParagraphs();
-      }
-    }
-    
-    /* --- EVENTOS Y ASIGNACIONES --- */
-    elements.textDisplay.addEventListener('input', () => {
-      if (!elements.textDisplay.querySelector('.placeholder')) {
-        saveToLocalStorage();
-      }
-    });
-    elements.textDisplay.onblur = () => {
-      if (!elements.textDisplay.textContent.trim()) {
-        elements.textDisplay.innerHTML =
-          '<span class="placeholder">Escribe o pega tu texto aquí. Cada cambio de línea será un nuevo párrafo.</span>';
-      }
-      saveToLocalStorage();
-    };
-    elements.voiceSelect.onchange = (e) => {
-      state.selectedVoice = e.target.value;
-      saveToLocalStorage();
-    };
-    elements.rateRange.oninput = (e) => {
-      state.speechRate = parseFloat(e.target.value);
-      elements.rateDisplay.textContent = state.speechRate + "x";
-      saveToLocalStorage();
-    };
-    elements.pitchRange.oninput = (e) => {
-      state.speechPitch = parseFloat(e.target.value);
-      elements.pitchDisplay.textContent = state.speechPitch;
-      saveToLocalStorage();
-    };
-    document.getElementById('settingsButton').onclick = () => {
-      elements.settingsPanel.classList.add('open');
-    };
-    document.getElementById('closeSettings').onclick = () => {
-      elements.settingsPanel.classList.remove('open');
-    };
-    document.getElementById('menuButton').onclick = () => {
-      document.getElementById('sideMenu').classList.add('open');
-      renderSavedTexts();
-    };
-    document.getElementById('closeMenu').onclick = () => {
-      document.getElementById('sideMenu').classList.remove('open');
-    };
-    document.getElementById('clearText').onclick = clearText;
-    elements.playButton.onclick = togglePlay;
-    elements.rewindButton.onclick = () => skipParagraphs(-1);
-    elements.forwardButton.onclick = () => skipParagraphs(1);
-    elements.saveTextButton.onclick = saveCurrentText;
-    elements.textDisplay.onfocus = () => {
-      if (elements.textDisplay.querySelector('.placeholder')) {
-        elements.textDisplay.innerHTML = '';
-      }
-    };
+  });
 
-    /* --- DETECCIÓN DE VISIBILIDAD DE LA PÁGINA --- */
-    // Este fragmento muestra un mensaje si la pestaña pierde el foco, ya que en muchos móviles
-    // la reproducción en segundo plano puede verse afectada.
-    document.addEventListener("visibilitychange", function() {
-      if (document.hidden && state.isReading) {
-        showNotification("La reproducción puede detenerse en segundo plano en algunos dispositivos móviles.");
-      }
-    });
+  // Inicialización al cargar la página
+  (function init() {
+    loadFromLocalStorage();
+    loadVoices();
+  })();
+</script>
 
-    // Inicialización al cargar la página
-    (function init() {
-      loadFromLocalStorage();
-      loadVoices();
-    })();
-  </script>
 </body>
 </html>
