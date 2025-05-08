@@ -1,761 +1,1568 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Lector de Texto - Párrafos</title>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <style>
-    :root {
-      --bg-dark: #111827;
-      --bg-darker: #1F2937;
-      --text-white: #ffffff;
-      --text-gray: #9CA3AF;
-      --blue-500: #3B82F6;
-      --blue-600: #2563EB;
-      --red-500: #EF4444;
-      --red-600: #DC2626;
-      --gray-600: #4B5563;
-      --gray-700: #374151;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background-color: var(--bg-dark);
-      color: var(--text-white);
-      min-height: 100vh;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2rem 1rem;
-    }
-
-    /* HEADER */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-    }
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    .title {
-      font-size: 1.875rem;
-      font-weight: bold;
-      color: var(--blue-500);
-    }
-    .header-buttons {
-      display: flex;
-      gap: 1rem;
-    }
-    .icon-button {
-      padding: 0.5rem;
-      border-radius: 9999px;
-      background: none;
-      border: none;
-      color: var(--blue-500);
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    .icon-button:hover {
-      background-color: var(--gray-700);
-    }
-
-    /* MENÚ LATERAL (IZQUIERDO) */
-    .side-menu {
-      position: fixed;
-      top: 0;
-      left: 0;
-      height: 100%;
-      width: 20rem;
-      background-color: var(--bg-darker);
-      box-shadow: 2px 0 8px rgba(0,0,0,0.2);
-      transform: translateX(-100%);
-      transition: transform 0.3s ease-in-out;
-      z-index: 1000;
-    }
-    .side-menu.open {
-      transform: translateX(0);
-    }
-    .side-menu-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1.5rem;
-      border-bottom: 1px solid var(--gray-700);
-    }
-    .side-menu-content {
-      padding: 1.5rem;
-    }
-    .side-menu-content ul {
-      list-style: none;
-    }
-    .side-menu-content li {
-      padding: 0.5rem;
-      margin-bottom: 0.5rem;
-      background-color: var(--gray-700);
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    .side-menu-content li:hover {
-      background-color: var(--gray-600);
-    }
-
-    /* ÁREA DE TEXTO Y CONTROLES */
-    .text-container {
-      background-color: var(--bg-darker);
-      padding: 1.5rem;
-      border-radius: 0.5rem;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .text-control-bar {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 1rem;
-    }
-    .text-display {
-      width: 100%;
-      min-height: 16rem;
-      max-height: 400px; /* Altura fija con scroll */
-      padding: 1rem;
-      background-color: var(--gray-700);
-      border: 2px solid var(--gray-600);
-      border-radius: 0.5rem;
-      color: var(--text-white);
-      overflow-y: auto;
-      margin-bottom: 1rem;
-    }
-    .text-display:focus-within {
-      border-color: var(--blue-500);
-      box-shadow: 0 0 0 2px rgba(59,130,246,0.5);
-    }
-    .placeholder {
-      color: var(--text-gray);
-    }
-    .paragraph {
-      margin-bottom: 0.5rem;
-      white-space: pre-wrap;
-      display: block;
-    }
-    .highlighted {
-      background-color: var(--blue-500);
-      padding: 0.25rem;
-      border-radius: 0.25rem;
-      display: block;
-      margin-bottom: 0.5rem;
-      white-space: pre-wrap;
-    }
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 1rem;
-      margin-top: 1.5rem;
-    }
-    .control-button, .play-button, .save-button {
-      padding: 0.75rem;
-      border-radius: 0.5rem;
-      border: none;
-      background-color: var(--gray-700);
-      color: var(--text-white);
-      cursor: pointer;
-      transition: background-color 0.2s;
-      font-size: 1.125rem;
-      font-weight: 500;
-    }
-    .control-button:hover:not(:disabled),
-    .play-button:hover:not(.playing),
-    .save-button:hover {
-      background-color: var(--gray-600);
-    }
-    .control-button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .play-button.playing {
-      background-color: var(--red-500);
-    }
-    .play-button.playing:hover {
-      background-color: var(--red-600);
-    }
-    .play-button:not(.playing) {
-      background-color: var(--blue-500);
-    }
-    .play-button:not(.playing):hover {
-      background-color: var(--blue-600);
-    }
-    .save-button {
-      background-color: var(--blue-600);
-      margin-top: 1rem;
-      width: 100%;
-    }
-
-    /* PANEL DE CONFIGURACIÓN (DERECHO) */
-    .settings-panel {
-      position: fixed;
-      top: 0;
-      right: 0;
-      height: 100%;
-      width: 20rem;
-      background-color: var(--bg-darker);
-      box-shadow: -2px 0 8px rgba(0,0,0,0.2);
-      transform: translateX(100%);
-      transition: transform 0.3s ease-in-out;
-      z-index: 999;
-    }
-    .settings-panel.open {
-      transform: translateX(0);
-    }
-    .settings-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1.5rem;
-      border-bottom: 1px solid var(--gray-700);
-    }
-    .settings-content {
-      padding: 1.5rem;
-    }
-    .setting-group {
-      margin-bottom: 1.5rem;
-    }
-    .setting-label {
-      display: block;
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--text-gray);
-      margin-bottom: 0.5rem;
-    }
-    .voice-select {
-      width: 100%;
-      padding: 0.5rem;
-      background-color: var(--gray-700);
-      border: 1px solid var(--gray-600);
-      border-radius: 0.5rem;
-      color: var(--text-white);
-    }
-    .voice-select:focus {
-      border-color: var(--blue-500);
-      box-shadow: 0 0 0 2px rgba(59,130,246,0.5);
-    }
-    .range-input {
-      width: 100%;
-      height: 0.5rem;
-      background-color: var(--gray-700);
-      border-radius: 0.25rem;
-      -webkit-appearance: none;
-    }
-    .range-input::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 1rem;
-      height: 1rem;
-      background-color: var(--blue-500);
-      border-radius: 50%;
-      cursor: pointer;
-    }
-
-    /* NOTIFICACIONES */
-    #notificationContainer {
-      position: fixed;
-      bottom: 20px;
-      left: 20px;
-      z-index: 1100;
-    }
-    .notification {
-      background-color: var(--red-500);
-      color: var(--text-white);
-      padding: 0.75rem 1rem;
-      margin-bottom: 0.5rem;
-      border-radius: 4px;
-      opacity: 0.9;
-      transition: opacity 0.5s ease-out;
-    }
-
-    /* MEDIA QUERIES PARA RESPONSIVIDAD */
-    @media (max-width: 768px) {
-      .container {
-        padding: 1rem;
-      }
-      .header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-      }
-      .side-menu,
-      .settings-panel {
-        width: 16rem;
-      }
-      .text-display {
-        font-size: 0.9rem;
-      }
-      .control-button, .play-button, .save-button {
-        padding: 0.5rem;
-        font-size: 1rem;
-      }
-    }
-  </style>
-</head>
-<!-- MENÚ LATERAL (IZQUIERDO): Guarda los textos guardados -->
-  <div class="side-menu" id="sideMenu">
-    <div class="side-menu-header">
-      <h2 style="color: var(--blue-500)">Guardados</h2>
-      <button class="icon-button" id="closeMenu" title="Cerrar Menú">
-        <i data-lucide="x"></i>
-      </button>
-    </div>
-    <div class="side-menu-content">
-      <ul id="savedTextsList">
-        <!-- Aquí se cargarán los textos guardados -->
-      </ul>
-    </div>
-  </div>
-
-  <div class="container">
-    <!-- Encabezado -->
-    <header class="header">
-      <div class="header-left">
-        <button class="icon-button" id="menuButton" title="Menú">
-          <i data-lucide="menu"></i>
-        </button>
-        <h1 class="title">Lector de Texto</h1>
-      </div>
-      <div class="header-buttons">
-        <button class="icon-button" id="settingsButton" title="Configuración">
-          <i data-lucide="settings"></i>
-        </button>
-      </div>
-    </header>
-
-    <!-- Área principal con el editor y controles -->
-    <main>
-      <div class="text-container">
-        <div class="text-control-bar">
-          <button class="icon-button" id="clearText" title="Limpiar texto">
-            <i data-lucide="rotate-ccw"></i>
-          </button>
-        </div>
-        <!-- Área editable con scroll; el contenido se guarda en el navegador -->
-        <div id="textDisplay" class="text-display" contenteditable="true">
-          <span class="placeholder">Escribe o pega tu texto aquí. Cada cambio de línea será un nuevo párrafo.</span>
-        </div>
-      </div>
-
-      <div class="controls">
-        <button class="control-button" id="rewindButton" disabled title="Retroceder un párrafo">
-          <i data-lucide="arrow-left"></i>
-        </button>
-        <button class="play-button" id="playButton">
-          <i data-lucide="play"></i>
-          <span>Reproducir</span>
-        </button>
-        <button class="control-button" id="forwardButton" disabled title="Adelantar un párrafo">
-          <i data-lucide="arrow-right"></i>
-        </button>
-      </div>
-
-      <!-- Botón Guardar debajo de los controles -->
-      <div class="controls">
-        <button class="save-button" id="saveTextButton">Guardar</button>
-      </div>
-    </main>
-
-    <!-- PANEL DE CONFIGURACIÓN (DERECHO) -->
-    <div class="settings-panel" id="settingsPanel">
-      <div class="settings-header">
-        <h2 style="color: var(--blue-500)">Configuración</h2>
-        <button class="icon-button" id="closeSettings" title="Cerrar Configuración">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      <div class="settings-content">
-        <div class="setting-group">
-          <label class="setting-label">Voz</label>
-          <select id="voiceSelect" class="voice-select"></select>
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">
-            Velocidad de lectura: <span id="rateDisplay">1x</span>
-          </label>
-          <input type="range" id="rateRange" class="range-input" min="0.5" max="2" step="0.1" value="1">
-        </div>
-        <div class="setting-group">
-          <label class="setting-label">
-            Tono de voz: <span id="pitchDisplay">1</span>
-          </label>
-          <input type="range" id="pitchRange" class="range-input" min="0.5" max="2" step="0.1" value="1">
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Contenedor para notificaciones -->
-  <div id="notificationContainer"></div>
-
- 
-    <script>
-  // Inicializar iconos de Lucide
-  lucide.createIcons();
-
-  // Función para mostrar notificaciones de error (desaparecen automáticamente)
-  function showNotification(message) {
-    const container = document.getElementById('notificationContainer');
-    const notif = document.createElement('div');
-    notif.className = 'notification';
-    notif.innerText = message;
-    container.appendChild(notif);
-    setTimeout(() => {
-      notif.style.opacity = '0';
-      setTimeout(() => {
-        container.removeChild(notif);
-      }, 500);
-    }, 3000);
-  }
-
-  // Estado de la aplicación
-  const state = {
-    isReading: false,       // Indica si se está reproduciendo texto
-    isPaused: false,        // Estado de pausa de la reproducción
-    currentParagraph: 0,    // Índice del párrafo actual
-    paragraphs: [],         // Contenedor de párrafos extraídos del texto
-    speechRate: 1,          // Velocidad de lectura
-    speechPitch: 1,         // Tono de voz
-    selectedVoice: '',      // Voz seleccionada
-    availableVoices: [],    // Lista de voces disponibles
-    currentUtterance: null, // Instancia actual del SpeechSynthesisUtterance
-    savedTexts: []          // Textos guardados en localStorage
-  };
-
-  // Referencias a elementos del DOM
-  const elements = {
-    textDisplay: document.getElementById('textDisplay'),
-    playButton: document.getElementById('playButton'),
-    rewindButton: document.getElementById('rewindButton'),
-    forwardButton: document.getElementById('forwardButton'),
-    settingsPanel: document.getElementById('settingsPanel'),
-    voiceSelect: document.getElementById('voiceSelect'),
-    rateRange: document.getElementById('rateRange'),
-    pitchRange: document.getElementById('pitchRange'),
-    rateDisplay: document.getElementById('rateDisplay'),
-    pitchDisplay: document.getElementById('pitchDisplay'),
-    saveTextButton: document.getElementById('saveTextButton'),
-    savedTextsList: document.getElementById('savedTextsList')
-  };
-
-  /* CARGAR CONTENIDO Y CONFIGURACIONES GUARDADAS */
-  function loadFromLocalStorage() {
-    const savedText = localStorage.getItem('savedText') || '';
-    if (savedText) {
-      elements.textDisplay.innerHTML = savedText;
-    }
-    const savedVoice = localStorage.getItem('selectedVoice');
-    if (savedVoice) {
-      state.selectedVoice = savedVoice;
-    }
-    const savedRate = localStorage.getItem('speechRate');
-    if (savedRate) {
-      state.speechRate = parseFloat(savedRate);
-      elements.rateRange.value = savedRate;
-      elements.rateDisplay.textContent = savedRate + "x";
-    }
-    const savedPitch = localStorage.getItem('speechPitch');
-    if (savedPitch) {
-      state.speechPitch = parseFloat(savedPitch);
-      elements.pitchRange.value = savedPitch;
-      elements.pitchDisplay.textContent = savedPitch;
-    }
-    const savedTexts = localStorage.getItem('savedTexts');
-    state.savedTexts = savedTexts ? JSON.parse(savedTexts) : [];
-    renderSavedTexts();
-  }
-
-  function saveToLocalStorage() {
-    localStorage.setItem('savedText', elements.textDisplay.innerHTML);
-    localStorage.setItem('selectedVoice', state.selectedVoice);
-    localStorage.setItem('speechRate', state.speechRate);
-    localStorage.setItem('speechPitch', state.speechPitch);
-    localStorage.setItem('savedTexts', JSON.stringify(state.savedTexts));
-  }
-
-  loadFromLocalStorage();
-
-  /* CARGAR VOCES */
-  function loadVoices() {
-    state.availableVoices = window.speechSynthesis.getVoices();
-    elements.voiceSelect.innerHTML = state.availableVoices
-      .map(voice => `<option value="${voice.name}">${voice.name}</option>`)
-      .join('');
-    if (state.availableVoices.length > 0) {
-      if (state.selectedVoice) {
-        const voiceExists = state.availableVoices.find(v => v.name === state.selectedVoice);
-        elements.voiceSelect.value = voiceExists ? state.selectedVoice : state.availableVoices[0].name;
-      } else {
-        state.selectedVoice = state.availableVoices[0].name;
-        elements.voiceSelect.value = state.selectedVoice;
-      }
-    }
-  }
-
-  speechSynthesis.onvoiceschanged = loadVoices;
-  loadVoices();
-
-  /* PROCESAMIENTO Y REPRODUCCIÓN DEL TEXTO */
-  function parseParagraphs() {
-    const fullText = elements.textDisplay.innerText.trim();
-    if (!fullText) {
-      state.paragraphs = [];
-      return;
-    }
-    state.paragraphs = fullText.split(/\n+/);
-  }
-
-  function renderParagraphs() {
-    const html = state.paragraphs.map((p, i) => {
-      if (i === state.currentParagraph && state.isReading && !state.isPaused) {
-        return `<p class="highlighted">${p}</p>`;
-      }
-      return `<p class="paragraph">${p}</p>`;
-    }).join('');
-    elements.textDisplay.innerHTML = html;
-    const highlightedElem = elements.textDisplay.querySelector('.highlighted');
-    if (highlightedElem) {
-      highlightedElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }
-
-  function startReadingFromCurrent() {
-    if (state.currentParagraph < 0 || state.currentParagraph >= state.paragraphs.length) return;
-    const text = state.paragraphs[state.currentParagraph];
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = state.speechRate;
-    utterance.pitch = state.speechPitch;
-    const voice = state.availableVoices.find(v => v.name === state.selectedVoice);
-    if (voice) {
-      utterance.voice = voice;
-    }
-    utterance.onend = () => {
-      if (!state.isPaused) {
-        state.currentParagraph++;
-        if (state.currentParagraph < state.paragraphs.length) {
-          renderParagraphs();
-          startReadingFromCurrent();
-        } else {
-          state.isReading = false;
-          updatePlayButton(false);
-          renderParagraphs();
-          disableSkipButtons(true);
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lector de Texto Avanzado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados para tema oscuro */
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #121826; /* Fondo oscuro */
+            color: #e2e8f0; /* Texto claro */
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
         }
-      }
-    };
-    state.currentUtterance = utterance;
-    try {
-      window.speechSynthesis.speak(utterance);
-    } catch (error) {
-      showNotification("Error al iniciar la reproducción.");
-    }
-    renderParagraphs();
-  }
+        .container {
+            background-color: #1e293b; /* Contenedor oscuro */
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 700px;
+        }
+        textarea {
+            min-height: 150px;
+            border-radius: 0.5rem;
+            border: 1px solid #334155;
+            padding: 0.75rem;
+            transition: border-color 0.3s;
+            background-color: #0f172a; /* Fondo oscuro para textarea */
+            color: #e2e8f0; /* Texto claro */
+            resize: vertical;
+        }
+        textarea:focus {
+            border-color: #818cf8; /* Color de borde al enfocar */
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+        }
+        .control-group {
+            margin-bottom: 1.25rem;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #94a3b8; /* Color de texto de etiqueta */
+        }
+        select, input[type="range"] {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid #334155;
+            background-color: #0f172a; /* Fondo oscuro para inputs */
+            color: #e2e8f0;
+            transition: border-color 0.3s;
+        }
+        select:focus, input[type="range"]:focus {
+            border-color: #818cf8;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+        }
+        .button-group button {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .button-group button svg {
+            margin-right: 0.25rem;
+        }
+        .button-group button:hover:not(.btn-disabled) {
+            transform: translateY(-2px);
+        }
+        .button-group button:active:not(.btn-disabled) {
+            transform: translateY(0px);
+        }
+        .btn-play {
+            background-color: #818cf8; /* Indigo */
+            color: white;
+        }
+        .btn-play:hover:not(.btn-disabled) {
+            background-color: #6366f1;
+        }
+        .btn-pause {
+            background-color: #f59e0b; /* Amber */
+            color: white;
+        }
+        .btn-pause:hover:not(.btn-disabled) {
+            background-color: #d97706;
+        }
+        .btn-nav {
+            background-color: #475569; /* Slate */
+            color: white;
+        }
+        .btn-nav:hover:not(.btn-disabled) {
+            background-color: #334155;
+        }
+        .btn-disabled {
+            background-color: #475569;
+            color: #64748b;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .btn-disabled:hover {
+            background-color: #475569;
+            transform: none;
+        }
+        .status-message {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            font-weight: 500;
+            transition: opacity 0.3s ease;
+            opacity: 1;
+        }
+        .status-message.hidden {
+            opacity: 0;
+            height: 0;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+        .status-error {
+            background-color: #7f1d1d; /* Fondo rojo oscuro para errores */
+            color: #fecaca; /* Texto rojo claro para errores */
+        }
+        .status-info {
+            background-color: #172554; /* Fondo azul oscuro para info */
+            color: #bfdbfe; /* Texto azul claro para info */
+        }
 
-  function togglePlay() {
-    if (elements.textDisplay.querySelector('.placeholder')) {
-      elements.textDisplay.innerHTML = '';
-    }
-    if (!state.isReading && !window.speechSynthesis.speaking) {
-      parseParagraphs();
-      if (state.paragraphs.length === 0) {
-        showNotification("No hay texto para leer. Por favor, ingresa algún texto.");
-        return;
-      }
-      state.isReading = true;
-      state.isPaused = false;
-      disableSkipButtons(false);
-      updatePlayButton(true);
-      startReadingFromCurrent();
-      return;
-    }
-    togglePauseResume();
-    updatePlayButton(!state.isPaused);
-  }
+        /* Estilo para los sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 8px;
+            background: #334155; /* Color de la pista del slider */
+            outline: none;
+            opacity: 0.9;
+            transition: opacity .15s ease-in-out;
+            border-radius: 9999px; /* Pista redondeada */
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #818cf8; /* Color del pulgar */
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid #1e293b; /* Borde oscuro alrededor del pulgar */
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #818cf8;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid #1e293b;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        .range-value {
+            display: inline-block;
+            min-width: 30px;
+            text-align: right;
+            color: #94a3b8;
+        }
 
-  function togglePauseResume() {
-    if (!state.isReading) return;
-    if (state.isPaused) {
-      state.isPaused = false;
-      window.speechSynthesis.resume();
-      renderParagraphs();
-    } else {
-      state.isPaused = true;
-      window.speechSynthesis.pause();
-    }
-  }
+        /* Estilo para el indicador de progreso */
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background-color: #334155;
+            border-radius: 9999px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #818cf8;
+            border-radius: 9999px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
 
-  function skipParagraphs(offset) {
-    if (!state.paragraphs.length || !state.isReading) return;
-    window.speechSynthesis.cancel();
-    state.currentUtterance = null;
-    state.currentParagraph += offset;
-    if (state.currentParagraph < 0) {
-      state.currentParagraph = 0;
-    } else if (state.currentParagraph >= state.paragraphs.length) {
-      state.currentParagraph = state.paragraphs.length - 1;
-    }
-    if (!state.isPaused) {
-      startReadingFromCurrent();
-    } else {
-      renderParagraphs();
-    }
-  }
+        /* Estilos para posición de lectura */
+        .reading-position {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
 
-  function clearText() {
-    window.speechSynthesis.cancel();
-    state.isReading = false;
-    state.isPaused = false;
-    state.currentParagraph = 0;
-    state.currentUtterance = null;
-    elements.textDisplay.innerHTML =
-      '<span class="placeholder">Escribe o pega tu texto aquí. Cada cambio de línea será un nuevo párrafo.</span>';
-    disableSkipButtons(true);
-    updatePlayButton(false);
-    state.paragraphs = [];
-    localStorage.removeItem('savedText');
-  }
+        /* Visualización de párrafos */
+        .paragraphs-container {
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 1rem 0;
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            background-color: #0f172a;
+            padding: 0.5rem;
+            scrollbar-width: thin;
+            scrollbar-color: #475569 #1e293b;
+        }
 
-  function updatePlayButton(isPlaying) {
-    const icon = isPlaying ? 'pause' : 'play';
-    const text = isPlaying ? 'Pausar' : 'Reproducir';
-    elements.playButton.innerHTML = `<i data-lucide="${icon}"></i>
-      <span>${text}</span>`;
-    elements.playButton.classList.toggle('playing', isPlaying);
-    lucide.createIcons();
-  }
+        .paragraph {
+            padding: 0.5rem;
+            margin-bottom: 0.25rem;
+            border-radius: 0.25rem;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+        }
 
-  function disableSkipButtons(disabled) {
-    elements.rewindButton.disabled = disabled;
-    elements.forwardButton.disabled = disabled;
-  }
+        .paragraph.active {
+            background-color: #3730a3;
+            border-left: 3px solid #818cf8;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            animation: pulse 2s infinite;
+        }
 
-  /* GUARDAR TEXTOS EN LOCALSTORAGE Y MOSTRAR EN MENÚ LATERAL */
-  function renderSavedTexts() {
-    elements.savedTextsList.innerHTML = state.savedTexts.map((item, index) => {
-      return `<li data-index="${index}">${item.title}</li>`;
-    }).join('');
-    elements.savedTextsList.querySelectorAll('li').forEach(li => {
-      li.addEventListener('click', () => {
-        loadSavedText(li.getAttribute('data-index'));
-      });
-    });
-  }
+        /* Efecto de pulso para el párrafo activo */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0.4); }
+            70% { box-shadow: 0 0 0 5px rgba(129, 140, 248, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0); }
+        }
 
-  function saveCurrentText() {
-    const content = elements.textDisplay.innerHTML.trim();
-    if (!content || elements.textDisplay.querySelector('.placeholder')) {
-      alert('No hay texto para guardar.');
-      return;
-    }
-    const textContent = elements.textDisplay.innerText.trim();
-    const words = textContent.split(/\s+/);
-    let title = words.slice(0, 5).join(' ');
-    if (title.length > 30) {
-      title = title.substring(0, 30) + '...';
-    }
-    const savedText = { title, content };
-    state.savedTexts.push(savedText);
-    saveToLocalStorage();
-    renderSavedTexts();
-    alert('Texto guardado correctamente.');
-  }
+        .paragraph:hover:not(.active) {
+            background-color: #1e293b;
+        }
 
-  function loadSavedText(index) {
-    const item = state.savedTexts[index];
-    if (item) {
-      elements.textDisplay.innerHTML = item.content;
-      saveToLocalStorage();
-      state.isReading = false;
-      state.isPaused = false;
-      state.currentParagraph = 0;
-      state.paragraphs = [];
-      updatePlayButton(false);
-      parseParagraphs();
-      renderParagraphs();
-    }
-  }
+        /* Barra de desplazamiento personalizada */
+        .paragraphs-container::-webkit-scrollbar {
+            width: 8px;
+        }
 
-  /* EVENTOS Y ASIGNACIONES */
-  elements.textDisplay.addEventListener('input', () => {
-    if (!elements.textDisplay.querySelector('.placeholder')) {
-      saveToLocalStorage();
-    }
-  });
-  elements.textDisplay.onblur = () => {
-    if (!elements.textDisplay.textContent.trim()) {
-      elements.textDisplay.innerHTML =
-        '<span class="placeholder">Escribe o pega tu texto aquí. Cada cambio de línea será un nuevo párrafo.</span>';
-    }
-    saveToLocalStorage();
-  };
-  elements.voiceSelect.onchange = (e) => {
-    state.selectedVoice = e.target.value;
-    saveToLocalStorage();
-  };
-  elements.rateRange.oninput = (e) => {
-    state.speechRate = parseFloat(e.target.value);
-    elements.rateDisplay.textContent = state.speechRate + "x";
-    saveToLocalStorage();
-  };
-  elements.pitchRange.oninput = (e) => {
-    state.speechPitch = parseFloat(e.target.value);
-    elements.pitchDisplay.textContent = state.speechPitch;
-    saveToLocalStorage();
-  };
-  document.getElementById('settingsButton').onclick = () => {
-    elements.settingsPanel.classList.add('open');
-  };
-  document.getElementById('closeSettings').onclick = () => {
-    elements.settingsPanel.classList.remove('open');
-  };
-  document.getElementById('menuButton').onclick = () => {
-    document.getElementById('sideMenu').classList.add('open');
-    renderSavedTexts();
-  };
-  document.getElementById('closeMenu').onclick = () => {
-    document.getElementById('sideMenu').classList.remove('open');
-  };
-  document.getElementById('clearText').onclick = clearText;
-  elements.playButton.onclick = togglePlay;
-  elements.rewindButton.onclick = () => skipParagraphs(-1);
-  elements.forwardButton.onclick = () => skipParagraphs(1);
-  elements.saveTextButton.onclick = saveCurrentText;
-  elements.textDisplay.onfocus = () => {
-    const hasPlaceholder = elements.textDisplay.querySelector('.placeholder');
-    if (hasPlaceholder) {
-      elements.textDisplay.innerHTML = '';
-    }
-  };
+        .paragraphs-container::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 10px;
+        }
 
-  // ** Detectar si la página pierde visibilidad (minimizada o cambia de pestaña) **
-  document.addEventListener('visibilitychange', function() {
-    if (document.hidden && state.isReading) {
-      showNotification('La lectura sigue en segundo plano...');
-    }
-  });
+        .paragraphs-container::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 10px;
+        }
 
-  // Inicialización al cargar la página
-  (function init() {
-    loadFromLocalStorage();
-    loadVoices();
-  })();
-</script>
+        .paragraphs-container::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
 
-</body>
-</html>
+        /* Estilos para mostrar atajos de teclado */
+        .keyboard-shortcuts {
+            background-color: #0f172a;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .keyboard-shortcuts h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: #818cf8;
+        }
+
+        .keyboard-shortcuts ul {
+            list-style-type: none;
+            padding-left: 0.5rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .keyboard-shortcuts li {
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .key {
+            display: inline-block;
+            background-color: #334155;
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            margin-right: 0.5rem;
+            font-weight: bold;
+            min-width: 1.5rem;
+            text-align: center;
+            box-shadow: 0 1px 0 #1e293b;
+        }
+
+        /* Mejoras para dispositivos móviles */
+        @media (max-width: 640px) {
+            body {
+                padding: 8px;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.5rem !important;
+                margin-bottom: 1rem !important;
+            }
+
+            .button-group button {
+                padding: 0.625rem;
+                font-size: 0.875rem;
+            }
+
+            .button-group button svg {
+                height: 1.25rem;
+                width: 1.25rem;
+            }
+
+            .button-text {
+                display: none;
+            }
+
+            .control-group {
+                margin-bottom: 1rem;
+            }
+
+            .status-message {
+                padding: 0.5rem;
+                font-size: 0.875rem;
+            }
+            
+            .paragraphs-container {
+                max-height: 150px;
+            }
+            
+            .keyboard-shortcuts ul {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Focus visible */
+        button:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline: 2px solid #818cf8;
+            outline-offset: 2px;
+        }
+        
+        /* Tooltip para pistas de teclado en botones */
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.25rem 0.5rem;
+            background-color: #334155;
+            color: #e2e8f0;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            z-index: 10;
+            margin-bottom: 5px;
+        }
+
+        /* Animación para transiciones de párrafos */
+        @keyframes highlight-paragraph {
+            0% { background-color: #4f46e5; }
+            100% { background-color: #3730a3; }
+        }
+
+        .paragraph.active-transition {
+            animation: highlight-paragraph 0.6s ease-out;
+        }
+        
+        /* Indicador de voz activa */
+        .voice-active {
+            position: relative;
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin-left: 8px;
+            border-radius: 50%;
+            background-color: #10b981;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            vertical-align: middle;
+        }
+        
+        .voice-active.speaking {
+            opacity: 1;
+            animation: pulse-dot 1.5s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+        }
+        
+        @keyframes pulse-dot {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            50% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.8); opacity: 0.8; }
+        }
+        
+        /* Botón flotante para dispositivos móviles */
+        .floating-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #818cf8;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+            cursor: pointer;
+            z-index: 100;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .floating-button {
+                display: flex;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-2xl md:text-3xl font-bold text-center mb-6 md:mb-8 text-indigo-300">Lector de Texto Avanzado</h1>
+
+        <div class="control-group">
+            <label for="textToSpeak" class="text-base md:text-lg">Escribe el texto aquí:</label>
+            <textarea id="textToSpeak" class="w-full p-3 border border-gray-700 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400" rows="5" placeholder="Ingresa el texto que deseas escuchar..."></textarea>
+        </div>
+
+        <!-- Contenedor de párrafos para visualización con resaltado -->
+        <div class="paragraphs-container" id="paragraphsContainer">
+            <div class="text-center text-gray-500 p-4">
+                Ingresa texto para ver los párrafos aquí
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+        
+        <div class="reading-position" id="readingPosition">Párrafo 0 de 0</div>
+
+        <div class="control-group">
+            <label for="voiceSelect" class="text-base md:text-lg">
+                Selecciona una voz:
+                <span id="voiceIndicator" class="voice-active"></span>
+            </label>
+            <select id="voiceSelect" class="w-full p-3 border border-gray-700 rounded-lg shadow-sm bg-gray-900 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"></select>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 control-group">
+            <div>
+                <label for="rate" class="text-base md:text-lg">Velocidad: <span id="rateValue" class="range-value">1</span></label>
+                <input type="range" id="rate" min="0.5" max="2" value="1" step="0.1" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+            <div>
+                <label for="pitch" class="text-base md:text-lg">Tono: <span id="pitchValue" class="range-value">1</span></label>
+                <input type="range" id="pitch" min="0" max="2" value="1" step="0.1" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+        </div>
+
+        <div class="button-group flex flex-wrap justify-center gap-2 md:gap-4 mt-6 md:mt-8">
+            <button id="prevButton" class="btn-nav tooltip" data-tooltip="Flecha izquierda" aria-label="Párrafo anterior">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                </svg>
+                <span class="button-text">Anterior</span>
+            </button>
+            <button id="playButton" class="btn-play tooltip" data-tooltip="Espacio" aria-label="Reproducir">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="button-text">Reproducir</span>
+            </button>
+            <button id="pauseButton" class="btn-pause tooltip" data-tooltip="Espacio" aria-label="Pausar">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="button-text">Pausar</span>
+            </button>
+            <button id="nextButton" class="btn-nav tooltip" data-tooltip="Flecha derecha" aria-label="Párrafo siguiente">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+                <span class="button-text">Siguiente</span>
+            </button>
+        </div>
+
+        <div id="statusMessage" class="status-message hidden" role="status" aria-live="polite"></div>
+        
+        <div class="keyboard-shortcuts">
+            <h3>Atajos de teclado:</h3>
+            <ul>
+                <li><span class="key">Espacio</span> Reproducir/Pausar</li>
+                <li><span class="key">←</span> Párrafo anterior</li>
+                <li><span class="key">→</span> Párrafo siguiente</li>
+                <li><span class="key">↑</span> Aumentar velocidad</li>
+                <li><span class="key">↓</span> Disminuir velocidad</li>
+                <li><span class="key">Inicio</span> Primer párrafo</li>
+                <li><span class="key">Fin</span> Último párrafo</li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Botón flotante para móviles -->
+    <div id="floatingPlayButton" class="floating-button">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+        </svg>
+    </div>
+
+    <script>
+        // Referencias a los elementos del DOM
+        const textToSpeakInput = document.getElementById('textToSpeak');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const rateInput = document.getElementById('rate');
+        const rateValueDisplay = document.getElementById('rateValue');
+        const pitchInput = document.getElementById('pitch');
+        const pitchValueDisplay = document.getElementById('pitchValue');
+        const playButton = document.getElementById('playButton');
+        const pauseButton = document.getElementById('pauseButton');
+        const prevButton = document.getElementById('prevButton');
+        const nextButton = document.getElementById('nextButton');
+        const statusMessage = document.getElementById('statusMessage');
+        const progressBar = document.getElementById('progressBar');
+        const readingPosition = document.getElementById('readingPosition');
+        const paragraphsContainer = document.getElementById('paragraphsContainer');
+        const voiceIndicator = document.getElementById('voiceIndicator');
+        const floatingPlayButton = document.getElementById('floatingPlayButton');
+
+        // Variables para control de párrafos y posición
+        let paragraphs = [];
+        let paragraphElements = [];
+        let currentParagraph = 0;
+        let isPaused = false;
+        let voicesLoaded = false;
+        let pausedByUser = false;
+        let chromeWorkaround = null;
+        let isReading = false;
+        let statusTimeout = null;
+        let lastInteraction = Date.now();
+
+        // Configuración para almacenamiento local
+        const STORAGE_KEY = 'textReaderData';
+        const STORAGE_KEY_VOICE = 'selectedVoiceData';
+
+        // Instancia de SpeechSynthesisUtterance
+        let utterance = null;
+        let voices = []; // Array para almacenar las voces disponibles
+
+        // Función para mostrar mensajes de estado con auto-ocultamiento
+        function showStatus(message, type = 'info', duration = 3000) {
+            // Cancelar cualquier temporizador existente
+            if (statusTimeout) {
+                clearTimeout(statusTimeout);
+                statusTimeout = null;
+            }
+
+            if (!message) {
+                statusMessage.classList.add('hidden');
+                return;
+            }
+            
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type === 'error' ? 'status-error' : 'status-info'}`;
+            statusMessage.classList.remove('hidden');
+            
+            // Auto-ocultar mensajes después del tiempo especificado
+            if (duration > 0) {
+                statusTimeout = setTimeout(() => {
+                    statusMessage.classList.add('hidden');
+                }, duration);
+            }
+        }
+
+        // Función para aplicar efecto de pulsación a botones
+        function applyButtonPress(button) {
+            button.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                button.style.transform = '';
+            }, 150);
+        }
+        
+        // Función para actualizar estado de botones
+        function updateButtonStates() {
+            const isSpeaking = speechSynthesis.speaking;
+            isPaused = speechSynthesis.paused;
+            isReading = isSpeaking;
+
+            // Actualizar indicador de voz activa
+            if (isSpeaking && !isPaused) {
+                voiceIndicator.classList.add('speaking');
+            } else {
+                voiceIndicator.classList.remove('speaking');
+            }
+
+            // Configurar botones de reproducción/pausa
+            playButton.disabled = isSpeaking && !isPaused;
+            pauseButton.disabled = !isSpeaking || isPaused;
+            
+            // Configurar botones de navegación - siempre disponibles excepto en los límites
+            prevButton.disabled = currentParagraph <= 0;
+            nextButton.disabled = currentParagraph >= paragraphs.length - 1;
+
+            if (isSpeaking && !isPaused) { // Hablando activamente
+                playButton.classList.add('btn-disabled');
+                pauseButton.classList.remove('btn-disabled');
+                
+                // Actualizar botón flotante
+                floatingPlayButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>`;
+            } else if (isSpeaking && isPaused) { // Pausado
+                playButton.classList.remove('btn-disabled');
+                pauseButton.classList.add('btn-disabled');
+                
+                playButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="button-text">Reanudar</span>`;
+                    
+                // Actualizar botón flotante
+                floatingPlayButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    </svg>`;
+            } else { // Detenido o inicial
+                playButton.classList.remove('btn-disabled');
+                pauseButton.classList.add('btn-disabled');
+                
+                playButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="button-text">Reproducir</span>`;
+                    
+                // Actualizar botón flotante
+                floatingPlayButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    </svg>`;
+            }
+
+            // Actualizar clases para botones de navegación
+            prevButton.classList.toggle('btn-disabled', prevButton.disabled);
+            nextButton.classList.toggle('btn-disabled', nextButton.disabled);
+        }
+
+        // Función para dividir el texto en párrafos de manera inteligente
+        function splitTextIntoParagraphs(text) {
+            if (!text || text.trim() === '') {
+                return [];
+            }
+            
+            // Dividir por saltos de línea
+            let rawParagraphs = text.split(/\n+/);
+            let result = [];
+            
+            for (let p of rawParagraphs) {
+                p = p.trim();
+                if (p === '') continue; // Ignorar párrafos vacíos
+                
+                // Si el párrafo es muy largo, dividir por oraciones
+                if (p.length > 250) {
+                    let sentences = p.split(/(?<=\.|\!|\?) /);
+                    let currentChunk = '';
+                    
+                    for (let sentence of sentences) {
+                        if ((currentChunk + sentence).length > 250) {
+                            if (currentChunk) result.push(currentChunk.trim());
+                            currentChunk = sentence;
+                        } else {
+                            currentChunk += (currentChunk ? ' ' : '') + sentence;
+                        }
+                    }
+                    
+                    if (currentChunk) result.push(currentChunk.trim());
+                } else {
+                    result.push(p);
+                }
+            }
+            
+            return result.filter(p => p.length > 0); // Remover párrafos vacíos
+        }
+
+        // Función para actualizar la visualización de párrafos
+        function updateParagraphsView() {
+            paragraphsContainer.innerHTML = '';
+            paragraphElements = [];
+
+            if (paragraphs.length === 0) {
+                paragraphsContainer.innerHTML = `
+                    <div class="text-center text-gray-500 p-4">
+                        Ingresa texto para ver los párrafos aquí
+                    </div>`;
+                return;
+            }
+            
+            paragraphs.forEach((text, index) => {
+                const paragraph = document.createElement('div');
+                paragraph.className = `paragraph ${index === currentParagraph ? 'active' : ''}`;
+                paragraph.textContent = text;
+                paragraph.dataset.index = index;
+                
+                paragraph.addEventListener('click', () => {
+                    // Permitir hacer clic en un párrafo para seleccionarlo y reproducirlo
+                    if (index !== currentParagraph) {
+                        currentParagraph = index;
+                        highlightCurrentParagraph();
+                        updatePositionInfo();
+                        
+                        if (isReading && !isPaused) {
+                            // Si está reproduciendo, cambiar al nuevo párrafo
+                            speechSynthesis.cancel();
+                            speakCurrentParagraph();
+                        } else if (isReading && isPaused) {
+                            // Si está pausado, cambiar párrafo pero mantener pausado
+                            speechSynthesis.cancel();
+                            speakCurrentParagraph();
+                            setTimeout(() => {
+                                if (speechSynthesis.speaking) {
+                                    speechSynthesis.pause();
+                                    pausedByUser = true;
+                                    updateButtonStates();
+                                }
+                            }, 50);
+                        } else {
+                            // Si no está reproduciendo, sólo actualizar la UI
+                            showStatus(`Párrafo ${currentParagraph + 1} seleccionado`, 'info');
+                        }
+                        
+                        saveToLocalStorage();
+                    }
+                });
+                
+                paragraphsContainer.appendChild(paragraph);
+                paragraphElements.push(paragraph);
+            });
+            
+            // Asegurar que el párrafo activo sea visible
+            scrollToCurrentParagraph();
+        }
+
+        // Resaltar el párrafo actual
+        function highlightCurrentParagraph() {
+            paragraphElements.forEach((p, i) => {
+                if (i === currentParagraph) {
+                    p.classList.add('active');
+                    p.classList.add('active-transition');
+                    setTimeout(() => p.classList.remove('active-transition'), 600);
+                } else {
+                    p.classList.remove('active');
+                }
+            });
+            
+            scrollToCurrentParagraph();
+        }
+
+        // Hacer scroll al párrafo actual
+        function scrollToCurrentParagraph() {
+            if (paragraphElements[currentParagraph]) {
+                paragraphElements[currentParagraph].scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest'
+                });
+            }
+        }
+
+        // Función para actualizar la información de posición
+        function updatePositionInfo() {
+            if (paragraphs.length > 0) {
+                readingPosition.textContent = `Párrafo ${currentParagraph + 1} de ${paragraphs.length}`;
+                progressBar.style.width = `${((currentParagraph + 1) / paragraphs.length) * 100}%`;
+            } else {
+                readingPosition.textContent = `Párrafo 0 de 0`;
+                progressBar.style.width = '0%';
+            }
+        }
+
+        // Función para obtener información completa de una voz
+        function getVoiceInfo(voice) {
+            return {
+                name: voice.name,
+                lang: voice.lang,
+                voiceURI: voice.voiceURI,
+                localService: voice.localService
+            };
+        }
+
+        // Función para guardar estado en localStorage
+        function saveToLocalStorage() {
+            try {
+                // Guardar datos generales
+                const data = {
+                    text: textToSpeakInput.value,
+                    currentParagraph: currentParagraph,
+                    rate: rateInput.value,
+                    pitch: pitchInput.value,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                
+                // Guardar información completa de la voz seleccionada
+                const selectedVoice = voices[voiceSelect.value];
+                if (selectedVoice) {
+                    const voiceInfo = getVoiceInfo(selectedVoice);
+                    localStorage.setItem(STORAGE_KEY_VOICE, JSON.stringify(voiceInfo));
+                }
+            } catch (error) {
+                console.error("Error al guardar en localStorage:", error);
+            }
+        }
+
+        // Función para encontrar la voz que mejor coincida con la información guardada
+        function findBestMatchingVoice(voiceInfo) {
+            if (!voiceInfo || !voices.length) return 0;
+            
+            // 1. Intentar coincidencia exacta por voiceURI
+            for (let i = 0; i < voices.length; i++) {
+                if (voices[i].voiceURI === voiceInfo.voiceURI) {
+                    return i;
+                }
+            }
+            
+            // 2. Intentar coincidencia por nombre y idioma
+            for (let i = 0; i < voices.length; i++) {
+                if (voices[i].name === voiceInfo.name && voices[i].lang === voiceInfo.lang) {
+                    return i;
+                }
+            }
+            
+            // 3. Intentar coincidencia solo por nombre
+            for (let i = 0; i < voices.length; i++) {
+                if (voices[i].name === voiceInfo.name) {
+                    return i;
+                }
+            }
+            
+            // 4. Intentar coincidencia solo por idioma
+            for (let i = 0; i < voices.length; i++) {
+                if (voices[i].lang === voiceInfo.lang) {
+                    return i;
+                }
+            }
+            
+            // 5. Devolver el índice de la primera voz en español o la primera disponible
+            const spanishVoiceIndex = voices.findIndex(voice => voice.lang.includes('es'));
+            return spanishVoiceIndex >= 0 ? spanishVoiceIndex : 0;
+        }
+
+        // Función para cargar estado desde localStorage
+        function loadFromLocalStorage() {
+            try {
+                const savedData = localStorage.getItem(STORAGE_KEY);
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    
+                    // Verificar si los datos son muy antiguos (más de 30 días)
+                    if (data.timestamp && Date.now() - data.timestamp > 30 * 24 * 60 * 60 * 1000) {
+                        localStorage.removeItem(STORAGE_KEY);
+                        return;
+                    }
+                    
+                    textToSpeakInput.value = data.text || '';
+                    rateInput.value = data.rate || 1;
+                    rateValueDisplay.textContent = parseFloat(rateInput.value).toFixed(1);
+                    pitchInput.value = data.pitch || 1;
+                    pitchValueDisplay.textContent = parseFloat(pitchInput.value).toFixed(1);
+                    
+                    // Procesar el texto para configurar los párrafos
+                    if (data.text) {
+                        paragraphs = splitTextIntoParagraphs(data.text);
+                        currentParagraph = Math.min(data.currentParagraph || 0, Math.max(0, paragraphs.length - 1));
+                        updateParagraphsView();
+                        updatePositionInfo();
+                    }
+                }
+                
+                // Cargar la voz guardada
+                loadSavedVoice();
+            } catch (error) {
+                console.error("Error al cargar desde localStorage:", error);
+                // En caso de error, intentar limpiar el localStorage
+                try {
+                    localStorage.removeItem(STORAGE_KEY);
+                } catch (e) {}
+            }
+        }
+        
+        // Función para cargar la voz guardada
+        function loadSavedVoice() {
+            try {
+                const savedVoiceInfo = localStorage.getItem(STORAGE_KEY_VOICE);
+                if (savedVoiceInfo && voices.length > 0) {
+                    const voiceInfo = JSON.parse(savedVoiceInfo);
+                    const bestMatchIndex = findBestMatchingVoice(voiceInfo);
+                    if (bestMatchIndex >= 0) {
+                        voiceSelect.value = bestMatchIndex;
+                    }
+                }
+            } catch (e) {
+                console.error("Error al cargar la voz guardada:", e);
+            }
+        }
+
+        // Cargar y popular las voces disponibles
+        function populateVoiceList() {
+            voices = speechSynthesis.getVoices();
+            
+            if (voices.length === 0) {
+                setTimeout(populateVoiceList, 50); // Reintentamos si no hay voces disponibles aún
+                return;
+            }
+            
+            voiceSelect.innerHTML = ''; // Limpiar opciones previas
+            
+            // Filtrar voces en español primero
+            const spanishVoices = voices.filter(voice => voice.lang.includes('es'));
+            const otherVoices = voices.filter(voice => !voice.lang.includes('es'));
+            const sortedVoices = [...spanishVoices, ...otherVoices];
+            
+            sortedVoices.forEach((voice) => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                if (voice.default) {
+                    option.textContent += ' — Predeterminada';
+                }
+                option.setAttribute('data-lang', voice.lang);
+                option.setAttribute('data-name', voice.name);
+                option.setAttribute('data-uri', voice.voiceURI || '');
+                option.value = voices.indexOf(voice); // Usar el índice original como valor
+                voiceSelect.appendChild(option);
+            });
+            
+            voicesLoaded = true;
+            
+            // Intentar restaurar la voz guardada
+            try {
+                loadSavedVoice();
+                
+                // Si no hay voz seleccionada, escoger una por defecto
+                if (!voiceSelect.value && spanishVoices.length > 0) {
+                    const spanishIndex = voices.indexOf(spanishVoices[0]);
+                    voiceSelect.value = spanishIndex;
+                } else if (!voiceSelect.value) {
+                    voiceSelect.selectedIndex = 0;
+                }
+            } catch (e) {
+                console.error("Error al restaurar la voz:", e);
+                // En caso de error, seleccionar la primera voz
+                if (voiceSelect.options.length > 0) {
+                    voiceSelect.selectedIndex = 0;
+                }
+            }
+            
+            updateButtonStates();
+        }
+
+        // La API de SpeechSynthesis a veces carga las voces de forma asíncrona.
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
+
+        // Intentar cargar las voces inmediatamente
+        populateVoiceList();
+
+        // Solución para el bug de Chrome: la síntesis de voz a veces se detiene después de ~15 segundos
+        function startChromeWorkaround() {
+            // Limpiar cualquier workaround previo
+            stopChromeWorkaround();
+            
+            // Establecer un nuevo intervalo para mantener viva la síntesis
+            chromeWorkaround = setInterval(() => {
+                if (speechSynthesis.speaking && !speechSynthesis.paused && !pausedByUser) {
+                    // Pausar y reanudar rápidamente para evitar que Chrome detenga la síntesis
+                    speechSynthesis.pause();
+                    setTimeout(() => {
+                        if (speechSynthesis.paused && !pausedByUser) {
+                            speechSynthesis.resume();
+                        }
+                    }, 50);
+                }
+            }, 5000); // Intervalo de 5 segundos
+        }
+
+        function stopChromeWorkaround() {
+            if (chromeWorkaround) {
+                clearInterval(chromeWorkaround);
+                chromeWorkaround = null;
+            }
+        }
+
+        // Función para reproducir el párrafo actual
+        function speakCurrentParagraph() {
+            if (paragraphs.length === 0 || currentParagraph >= paragraphs.length) {
+                showStatus('No hay texto para leer', 'error');
+                return;
+            }
+            
+            // Cancelar cualquier reproducción previa y detener el workaround
+            speechSynthesis.cancel();
+            stopChromeWorkaround();
+            
+            // Crear nueva instancia de utterance para evitar problemas
+            utterance = new SpeechSynthesisUtterance(paragraphs[currentParagraph]);
+            
+            // Asegurarse de que la voz esté configurada
+            if (voices.length > 0 && voiceSelect.value) {
+                utterance.voice = voices[voiceSelect.value];
+            }
+            
+            utterance.rate = parseFloat(rateInput.value);
+            utterance.pitch = parseFloat(pitchInput.value);
+            
+            // Configurar eventos
+            utterance.onstart = handleSpeechStart;
+            utterance.onend = handleSpeechEnd;
+            utterance.onerror = handleSpeechError;
+            utterance.onpause = handleSpeechPause;
+            utterance.onresume = handleSpeechResume;
+            
+            speechSynthesis.speak(utterance);
+            pausedByUser = false;
+            isReading = true;
+            
+            // Mostrar mensaje y actualizar UI
+            showStatus(`Reproduciendo párrafo ${currentParagraph + 1} de ${paragraphs.length}`, 'info');
+            highlightCurrentParagraph();
+            updatePositionInfo();
+            updateButtonStates();
+            
+            // Iniciar el workaround para Chrome
+            startChromeWorkaround();
+            
+            // Guardar estado actual
+            saveToLocalStorage();
+            
+            // Registrar interacción
+            lastInteraction = Date.now();
+        }
+
+        // Manejadores de eventos para la síntesis de voz
+        function handleSpeechStart() {
+            console.log('Speech synthesis started.');
+            isReading = true;
+            voiceIndicator.classList.add('speaking');
+            updateButtonStates();
+        }
+
+        function handleSpeechEnd() {
+            console.log('Speech synthesis ended.');
+            voiceIndicator.classList.remove('speaking');
+            
+            // Avanzar automáticamente al siguiente párrafo
+            if (currentParagraph < paragraphs.length - 1) {
+                currentParagraph++;
+                highlightCurrentParagraph();
+                updatePositionInfo();
+                speakCurrentParagraph();
+            } else {
+                showStatus('Lectura finalizada.', 'info');
+                stopChromeWorkaround();
+                isReading = false;
+                updateButtonStates();
+            }
+        }
+
+        function handleSpeechError(event) {
+            console.error('Speech synthesis error:', event.error);
+            voiceIndicator.classList.remove('speaking');
+            showStatus(`Error: ${event.error}`, 'error');
+            stopChromeWorkaround();
+            isReading = false;
+            updateButtonStates();
+        }
+
+        function handleSpeechPause() {
+            console.log('Speech synthesis paused.');
+            voiceIndicator.classList.remove('speaking');
+            updateButtonStates();
+        }
+
+        function handleSpeechResume() {
+            console.log('Speech synthesis resumed.');
+            voiceIndicator.classList.add('speaking');
+            showStatus('Reanudando...', 'info');
+            updateButtonStates();
+        }
+
+        // FUNCIÓN PRINCIPAL PARA ALTERNAR ENTRE REPRODUCIR Y PAUSAR
+        function togglePlayPause() {
+            if (!textToSpeakInput.value.trim()) {
+                showStatus('Por favor, ingresa algún texto.', 'error');
+                return;
+            }
+
+            if (speechSynthesis.speaking) {
+                if (speechSynthesis.paused) {
+                    // Reanudar la reproducción
+                    pausedByUser = false;
+                    speechSynthesis.resume();
+                    showStatus('Reanudando...', 'info');
+                    voiceIndicator.classList.add('speaking');
+                } else {
+                    // Pausar la reproducción
+                    pausedByUser = true;
+                    speechSynthesis.pause();
+                    showStatus('Pausado.', 'info');
+                    voiceIndicator.classList.remove('speaking');
+                }
+            } else {
+                // Procesar el texto y comenzar a leer
+                if (paragraphs.length === 0) {
+                    paragraphs = splitTextIntoParagraphs(textToSpeakInput.value.trim());
+                    currentParagraph = 0;
+                    updateParagraphsView();
+                }
+                
+                if (paragraphs.length > 0) {
+                    speakCurrentParagraph();
+                }
+            }
+            
+            updateButtonStates();
+            lastInteraction = Date.now();
+        }
+
+        // Función para ir al párrafo anterior - funciona durante la reproducción
+        function gotoPreviousParagraph() {
+            if (currentParagraph > 0) {
+                const wasSpeaking = speechSynthesis.speaking && !speechSynthesis.paused;
+                const wasPaused = speechSynthesis.speaking && speechSynthesis.paused;
+                
+                // Cancelar reproducción actual
+                speechSynthesis.cancel();
+                stopChromeWorkaround();
+                
+                // Cambiar al párrafo anterior
+                currentParagraph--;
+                highlightCurrentParagraph();
+                updatePositionInfo();
+                
+                // Mantener el estado de reproducción/pausa
+                if (wasSpeaking) {
+                    speakCurrentParagraph();
+                } else if (wasPaused) {
+                    speakCurrentParagraph();
+                    setTimeout(() => {
+                        if (speechSynthesis.speaking) {
+                            speechSynthesis.pause();
+                            pausedByUser = true;
+                            updateButtonStates();
+                        }
+                    }, 50);
+                } else {
+                    showStatus(`Párrafo ${currentParagraph + 1} seleccionado`, 'info');
+                }
+                
+                saveToLocalStorage();
+                updateButtonStates();
+                lastInteraction = Date.now();
+            }
+        }
+
+        // Función para ir al párrafo siguiente - funciona durante la reproducción
+        function gotoNextParagraph() {
+            if (currentParagraph < paragraphs.length - 1) {
+                const wasSpeaking = speechSynthesis.speaking && !speechSynthesis.paused;
+                const wasPaused = speechSynthesis.speaking && speechSynthesis.paused;
+                
+                // Cancelar reproducción actual
+                speechSynthesis.cancel();
+                stopChromeWorkaround();
+                
+                // Cambiar al párrafo siguiente
+                currentParagraph++;
+                highlightCurrentParagraph();
+                updatePositionInfo();
+                
+                // Mantener el estado de reproducción/pausa
+                if (wasSpeaking) {
+                    speakCurrentParagraph();
+                } else if (wasPaused) {
+                    speakCurrentParagraph();
+                    setTimeout(() => {
+                        if (speechSynthesis.speaking) {
+                            speechSynthesis.pause();
+                            pausedByUser = true;
+                            updateButtonStates();
+                        }
+                    }, 50);
+                } else {
+                    showStatus(`Párrafo ${currentParagraph + 1} seleccionado`, 'info');
+                }
+                
+                saveToLocalStorage();
+                updateButtonStates();
+                lastInteraction = Date.now();
+            }
+        }
+
+        // Función para ir al primer párrafo
+        function goToFirstParagraph() {
+            if (currentParagraph !== 0 && paragraphs.length > 0) {
+                const wasSpeaking = speechSynthesis.speaking && !speechSynthesis.paused;
+                const wasPaused = speechSynthesis.speaking && speechSynthesis.paused;
+                
+                speechSynthesis.cancel();
+                stopChromeWorkaround();
+                
+                currentParagraph = 0;
+                highlightCurrentParagraph();
+                updatePositionInfo();
+                
+                if (wasSpeaking) {
+                    speakCurrentParagraph();
+                } else if (wasPaused) {
+                    speakCurrentParagraph();
+                    setTimeout(() => {
+                        speechSynthesis.pause();
+                        pausedByUser = true;
+                        updateButtonStates();
+                    }, 50);
+                } else {
+                    showStatus("Primer párrafo", "info");
+                }
+                
+                saveToLocalStorage();
+                updateButtonStates();
+                lastInteraction = Date.now();
+            }
+        }
+
+        // Función para ir al último párrafo
+        function goToLastParagraph() {
+            if (paragraphs.length > 0 && currentParagraph !== paragraphs.length - 1) {
+                const wasSpeaking = speechSynthesis.speaking && !speechSynthesis.paused;
+                const wasPaused = speechSynthesis.speaking && speechSynthesis.paused;
+                
+                speechSynthesis.cancel();
+                stopChromeWorkaround();
+                
+                currentParagraph = paragraphs.length - 1;
+                highlightCurrentParagraph();
+                updatePositionInfo();
+                
+                if (wasSpeaking) {
+                    speakCurrentParagraph();
+                } else if (wasPaused) {
+                    speakCurrentParagraph();
+                    setTimeout(() => {
+                        speechSynthesis.pause();
+                        pausedByUser = true;
+                        updateButtonStates();
+                    }, 50);
+                } else {
+                    showStatus("Último párrafo", "info");
+                }
+                
+                saveToLocalStorage();
+                updateButtonStates();
+                lastInteraction = Date.now();
+            }
+        }
+
+        // Función para cambiar velocidad
+        function adjustRate(increment) {
+            let newRate = parseFloat(rateInput.value) + increment;
+            newRate = Math.min(Math.max(newRate, parseFloat(rateInput.min)), parseFloat(rateInput.max));
+            rateInput.value = newRate;
+            rateValueDisplay.textContent = newRate.toFixed(1);
+            
+            // Aplicar cambios en tiempo real si está reproduciendo
+            if (speechSynthesis.speaking && !speechSynthesis.paused) {
+                const currentText = utterance.text;
+                speechSynthesis.cancel();
+                utterance = new SpeechSynthesisUtterance(currentText);
+                utterance.voice = voices[voiceSelect.value];
+                utterance.rate = newRate;
+                utterance.pitch = parseFloat(pitchInput.value);
+                utterance.onend = handleSpeechEnd;
+                utterance.onerror = handleSpeechError;
+                speechSynthesis.speak(utterance);
+                startChromeWorkaround();
+            }
+            
+            saveToLocalStorage();
+            lastInteraction = Date.now();
+        }
+
+        // Event listeners para los controles de botones
+        playButton.addEventListener('click', () => {
+            applyButtonPress(playButton);
+            togglePlayPause();
+        });
+
+        pauseButton.addEventListener('click', () => {
+            if (speechSynthesis.speaking && !speechSynthesis.paused) {
+                applyButtonPress(pauseButton);
+                pausedByUser = true;
+                speechSynthesis.pause();
+                showStatus('Pausado.', 'info');
+                updateButtonStates();
+                lastInteraction = Date.now();
+            }
+        });
+
+        // Botón flotante para móviles
+        floatingPlayButton.addEventListener('click', () => {
+            applyButtonPress(floatingPlayButton);
+            togglePlayPause();
+        });
+
+        // Botones de navegación entre párrafos
+        prevButton.addEventListener('click', () => {
+            applyButtonPress(prevButton);
+            gotoPreviousParagraph();
+        });
+
+        nextButton.addEventListener('click', () => {
+            applyButtonPress(nextButton);
+            gotoNextParagraph();
+        });
+
+        // Actualizar valores de velocidad y tono en la UI
+        rateInput.addEventListener('input', () => {
+            rateValueDisplay.textContent = parseFloat(rateInput.value).toFixed(1);
+            
+            // Aplicar cambios de velocidad en tiempo real
+            if (speechSynthesis.speaking && !speechSynthesis.paused) {
+                const wasReading = isReading;
+                speechSynthesis.cancel();
+                
+                if (wasReading) {
+                    speakCurrentParagraph();
+                }
+            }
+            
+            saveToLocalStorage();
+        });
+
+        pitchInput.addEventListener('input', () => {
+            pitchValueDisplay.textContent = parseFloat(pitchInput.value).toFixed(1);
+            
+            // Aplicar cambios de tono en tiempo real
+            if (speechSynthesis.speaking && !speechSynthesis.paused) {
+                const wasReading = isReading;
+                speechSynthesis.cancel();
+                
+                if (wasReading) {
+                    speakCurrentParagraph();
+                }
+            }
+            
+            saveToLocalStorage();
+        });
+        
+        voiceSelect.addEventListener('change', () => {
+            if (voices.length > 0 && voiceSelect.value !== undefined) {
+                // Aplicar cambio de voz en tiempo real
+                if (speechSynthesis.speaking) {
+                    const wasReading = !speechSynthesis.paused;
+                    const currentText = utterance.text;
+                    speechSynthesis.cancel();
+                    
+                    utterance = new SpeechSynthesisUtterance(currentText);
+                    utterance.voice = voices[voiceSelect.value];
+                    utterance.rate = parseFloat(rateInput.value);
+                    utterance.pitch = parseFloat(pitchInput.value);
+                    utterance.onend = handleSpeechEnd;
+                    utterance.onerror = handleSpeechError;
+                    
+                    if (wasReading) {
+                        speechSynthesis.speak(utterance);
+                        startChromeWorkaround();
+                    } else {
+                        speechSynthesis.speak(utterance);
+                        setTimeout(() => {
+                            speechSynthesis.pause();
+                            updateButtonStates();
+                        }, 50);
+                    }
+                }
+                
+                saveToLocalStorage();
+                lastInteraction = Date.now();
+            }
+        });
+
+        // Procesar el texto cuando cambia
+        textToSpeakInput.addEventListener('input', () => {
+            const newText = textToSpeakInput.value.trim();
+            
+            // Actualizar los párrafos solo cuando hay cambios significativos
+            if (newText !== paragraphs.join('\n\n')) {
+                if (speechSynthesis.speaking) {
+                    speechSynthesis.cancel();
+                    stopChromeWorkaround();
+                    isReading = false;
+                }
+                
+                paragraphs = splitTextIntoParagraphs(newText);
+                
+                // Mantener la posición actual si es posible
+                currentParagraph = Math.min(currentParagraph, Math.max(0, paragraphs.length - 1));
+                
+                updateParagraphsView();
+                updatePositionInfo();
+                updateButtonStates();
+            }
+            
+            saveToLocalStorage();
+        });
+
+        // CONTROL DE TECLADO PARA REPRODUCIR/PAUSAR CON LA TECLA ESPACIO
+        document.addEventListener('keydown', (e) => {
+            // No procesar teclas si estamos en un input o textarea
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || 
+                e.target.tagName === 'SELECT') {
+                return;
+            }
+
+            switch (e.key) {
+                case ' ': // ESPACIO para REPRODUCIR/PAUSAR
+                    e.preventDefault(); // Evitar scroll
+                    togglePlayPause();
+                    break;
+                    
+                case 'ArrowLeft': // Flecha izquierda para párrafo anterior
+                    e.preventDefault();
+                    gotoPreviousParagraph();
+                    break;
+                    
+                case 'ArrowRight': // Flecha derecha para párrafo siguiente
+                    e.preventDefault();
+                    gotoNextParagraph();
+                    break;
+                    
+                case 'ArrowUp': // Flecha arriba para aumentar velocidad
+                    e.preventDefault();
+                    adjustRate(0.1);
+                    break;
+                    
+                case 'ArrowDown': // Flecha abajo para disminuir velocidad
+                    e.preventDefault();
+                    adjustRate(-0.1);
+                    break;
+                    
+                    case 'Home': // Tecla Inicio para ir al primer párrafo
+                        e.preventDefault();
+                        goToFirstParagraph();
+                        break;
+                        
+                    case 'End': // Tecla Fin para ir al último párrafo
+                        e.preventDefault();
+                        goToLastParagraph();
+                        break;
+                }
+                
+                lastInteraction = Date.now();
+            });
+            
+            // Asegurar que el lector de voz se detiene si cambia la visibilidad de la página
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && speechSynthesis.speaking && !speechSynthesis.paused) {
+                    // La página no está visible, pausar la lectura
+                    pausedByUser = true;
+                    speechSynthesis.pause();
+                    
+                    // Si la página vuelve a estar visible pronto, intentar reanudar
+                    const resumeTimeout = setTimeout(() => {
+                        if (!document.hidden && speechSynthesis.paused && pausedByUser && 
+                            Date.now() - lastInteraction < 60000) { // Solo si pasó menos de 1 minuto
+                            pausedByUser = false;
+                            speechSynthesis.resume();
+                        }
+                    }, 300);
+                    
+                    // Limpiar el timeout si la página se cierra
+                    window.addEventListener('beforeunload', () => {
+                        clearTimeout(resumeTimeout);
+                    }, { once: true });
+                }
+            });
+            
+            // Verificar periódicamente el estado para detectar problemas
+            setInterval(() => {
+                // Verificar si deberíamos estar hablando pero no lo estamos
+                if (!speechSynthesis.speaking && voiceIndicator.classList.contains('speaking')) {
+                    voiceIndicator.classList.remove('speaking');
+                }
+                
+                // Actualizar el estado de los botones periódicamente
+                updateButtonStates();
+            }, 1000);
+            
+            // Verificar si el navegador soporta la síntesis de voz
+            if (!window.speechSynthesis) {
+                showStatus('Tu navegador no soporta la síntesis de voz. Intenta con Chrome, Edge o Safari.', 'error');
+            }
+    
+            // Solución al problema de Chrome - la síntesis a veces se detiene después de 15 segundos
+            // Este intervalo es independiente del otro workaround más especializado
+            setInterval(() => {
+                if (speechSynthesis.speaking && !speechSynthesis.paused && !pausedByUser) {
+                    speechSynthesis.pause();
+                    setTimeout(() => {
+                        if (speechSynthesis.paused && !pausedByUser) {
+                            speechSynthesis.resume();
+                        }
+                    }, 50);
+                }
+            }, 10000);
+    
+            // Inicialización
+            loadFromLocalStorage();
+            
+            setTimeout(() => {
+                updateButtonStates();
+                showStatus('Lector listo. Escribe algo y presiona Reproducir o la tecla Espacio.', 'info');
+            }, 300);
+    
+            // Guardar al cerrar la página
+            window.addEventListener('beforeunload', () => {
+                saveToLocalStorage();
+                
+                // Detener cualquier reproducción activa
+                if (speechSynthesis.speaking) {
+                    speechSynthesis.cancel();
+                    stopChromeWorkaround();
+                }
+            });
+        </script>
+    </body>
+    </html>
